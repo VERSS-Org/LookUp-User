@@ -1338,10 +1338,11 @@ class MetricTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: color),
-            const Spacer(),
+            const SizedBox(height: 18),
             Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: kInk)),
             const SizedBox(height: 2),
             Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
