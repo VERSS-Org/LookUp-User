@@ -193,9 +193,15 @@ class AuthService with ChangeNotifier {
     _cuentaId = savedCuentaId;
     _role = prefs.getString('role') ?? 'postulante';
     _api.setToken(_token);
-    await fetchProfile();
-    notifyListeners();
-    return true;
+
+    try {
+      await fetchProfile();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
   }
 
   Future<bool> login(String email, String password) async {
@@ -331,15 +337,27 @@ class LookUpDataService with ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    final errors = <String>[];
     try {
-      await Future.wait([
-        fetchJobs(notify: false),
-        fetchApplications(cuentaId, notify: false),
-        fetchMetrics(cuentaId, notify: false),
-      ]);
+      await fetchJobs(notify: false);
     } catch (e) {
-      _error = e.toString();
+      errors.add(e.toString());
+    }
+
+    try {
+      await fetchApplications(cuentaId, notify: false);
+    } catch (e) {
+      errors.add(e.toString());
+    }
+
+    try {
+      await fetchMetrics(cuentaId, notify: false);
+    } catch (e) {
+      errors.add(e.toString());
     } finally {
+      if (errors.isNotEmpty) {
+        _error = errors.first;
+      }
       _isLoading = false;
       notifyListeners();
     }
