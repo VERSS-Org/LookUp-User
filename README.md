@@ -1,6 +1,6 @@
 # LookUp User
 
-Aplicacion Flutter para postulantes de LookUp. Esta carpeta reemplaza la version Android/Kotlin con una app Flutter conectada al backend compartido.
+Aplicacion Flutter para postulantes de LookUp.
 
 ## Funcionalidad
 
