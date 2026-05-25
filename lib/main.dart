@@ -302,6 +302,7 @@ class LookUpDataService with ChangeNotifier {
 
   List<Map<String, dynamic>> _jobs = [];
   List<Map<String, dynamic>> _applications = [];
+  final Map<String, List<Map<String, dynamic>>> _contactsByApplication = {};
   Map<String, dynamic>? _metrics;
   bool _isLoading = false;
   String? _error;
@@ -311,10 +312,14 @@ class LookUpDataService with ChangeNotifier {
   Map<String, dynamic>? get metrics => _metrics;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  List<Map<String, dynamic>> contactsFor(String postulacionId) {
+    return _contactsByApplication[postulacionId] ?? const <Map<String, dynamic>>[];
+  }
 
   void clear() {
     _jobs = [];
     _applications = [];
+    _contactsByApplication.clear();
     _metrics = null;
     _error = null;
     _isLoading = false;
@@ -349,6 +354,7 @@ class LookUpDataService with ChangeNotifier {
   Future<void> fetchApplications(String cuentaId, {bool notify = true}) async {
     final response = await _api.get('postulacion/?candidato_id=$cuentaId');
     _applications = _asMapList(response);
+    await _fetchContactsForApplications();
     if (notify) notifyListeners();
   }
 
@@ -373,15 +379,38 @@ class LookUpDataService with ChangeNotifier {
     });
   }
 
+  Future<void> _fetchContactsForApplications() async {
+    _contactsByApplication.clear();
+    for (final application in _applications) {
+      final postulacionId = application['postulacion_id']?.toString();
+      if (postulacionId == null || postulacionId.isEmpty) continue;
+      try {
+        final response = await _api.get('contacto/?postulacion_id=$postulacionId');
+        _contactsByApplication[postulacionId] = _asMapList(response);
+      } catch (_) {
+        _contactsByApplication[postulacionId] = <Map<String, dynamic>>[];
+      }
+    }
+  }
+
   List<Map<String, dynamic>> latestEvents() {
     final events = <Map<String, dynamic>>[];
     for (final application in _applications) {
       final puesto = _asMap(application['puesto']);
+      final postulacionId = application['postulacion_id']?.toString() ?? '';
       for (final hito in _asMapList(application['hitos'])) {
         events.add({
           'title': puesto['titulo'] ?? 'Postulacion',
           'description': hito['descripcion'] ?? application['estado'] ?? 'Actualizacion',
           'date': hito['fecha'],
+        });
+      }
+      for (final contacto in contactsFor(postulacionId)) {
+        final feedback = _asMap(contacto['ultimo_feedback']);
+        events.add({
+          'title': puesto['titulo'] ?? 'Feedback',
+          'description': feedback['mensaje'] ?? 'La empresa envio feedback.',
+          'date': contacto['fecha_hora'],
         });
       }
     }
@@ -896,7 +925,12 @@ class ApplicationsScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
                 itemCount: data.applications.length,
                 itemBuilder: (context, index) {
-                  return ApplicationCard(application: data.applications[index]);
+                  final application = data.applications[index];
+                  final postulacionId = application['postulacion_id']?.toString() ?? '';
+                  return ApplicationCard(
+                    application: application,
+                    contacts: data.contactsFor(postulacionId),
+                  );
                 },
               ),
       ),
@@ -1192,9 +1226,10 @@ class JobCard extends StatelessWidget {
 }
 
 class ApplicationCard extends StatelessWidget {
-  const ApplicationCard({super.key, required this.application});
+  const ApplicationCard({super.key, required this.application, required this.contacts});
 
   final Map<String, dynamic> application;
+  final List<Map<String, dynamic>> contacts;
 
   @override
   Widget build(BuildContext context) {
@@ -1242,6 +1277,21 @@ class ApplicationCard extends StatelessWidget {
                       text: '${_formatDate(hito['fecha'])}: ${hito['descripcion'] ?? 'Actualizacion'}',
                     ),
                   )),
+            ],
+            if (contacts.isNotEmpty) ...[
+              const Divider(height: 24),
+              const Text('Feedback', style: TextStyle(fontWeight: FontWeight.w800, color: kInk)),
+              const SizedBox(height: 8),
+              ...contacts.take(2).map((contacto) {
+                final feedback = _asMap(contacto['ultimo_feedback']);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: IconText(
+                    icon: Icons.mark_email_read_outlined,
+                    text: feedback['mensaje']?.toString() ?? 'La empresa envio feedback.',
+                  ),
+                );
+              }),
             ],
           ],
         ),
