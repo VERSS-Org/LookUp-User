@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,24 +77,28 @@ ThemeData _buildLookUpTheme() {
     scaffoldBackgroundColor: kSurface,
   );
 
-  return base.copyWith(
-    textTheme: base.textTheme
-        .apply(bodyColor: kInk, displayColor: kInk)
-        .copyWith(
-          titleLarge: base.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-          ),
-          bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.35),
+  final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme)
+      .apply(bodyColor: kInk, displayColor: kInk)
+      .copyWith(
+        titleLarge: GoogleFonts.plusJakartaSans(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+          color: kInk,
         ),
-    appBarTheme: const AppBarTheme(
+        bodyMedium: GoogleFonts.plusJakartaSans(height: 1.35, color: kInk),
+      );
+
+  return base.copyWith(
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: kInk,
       surfaceTintColor: Colors.white,
       centerTitle: true,
       elevation: 0,
       scrolledUnderElevation: 0.5,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.plusJakartaSans(
         color: kInk,
         fontSize: 18,
         fontWeight: FontWeight.w800,
@@ -113,7 +120,7 @@ ThemeData _buildLookUpTheme() {
         minimumSize: const Size.fromHeight(52),
         elevation: 2,
         shadowColor: kBrandBlue.withValues(alpha: 0.45),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.plusJakartaSans(
           fontSize: 15,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
@@ -126,7 +133,10 @@ ThemeData _buildLookUpTheme() {
         backgroundColor: kBrandBlue,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
@@ -135,22 +145,32 @@ ThemeData _buildLookUpTheme() {
         foregroundColor: kBrandBlue,
         minimumSize: const Size.fromHeight(50),
         side: BorderSide(color: kBrandBlue.withValues(alpha: 0.35), width: 1.4),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: kBrandBlue,
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: kFieldFill,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      hintStyle: const TextStyle(color: kInkMuted),
-      labelStyle: const TextStyle(color: kInkMuted),
+      hintStyle: GoogleFonts.plusJakartaSans(color: kInkMuted),
+      labelStyle: GoogleFonts.plusJakartaSans(color: kInkMuted),
+      floatingLabelStyle: GoogleFonts.plusJakartaSans(
+        color: kBrandBlue,
+        fontWeight: FontWeight.w600,
+      ),
       prefixIconColor: kInkMuted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -179,7 +199,7 @@ ThemeData _buildLookUpTheme() {
       indicatorColor: kBrandBlue.withValues(alpha: 0.12),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => TextStyle(
+        (states) => GoogleFonts.plusJakartaSans(
           fontSize: 11.5,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
@@ -197,14 +217,14 @@ ThemeData _buildLookUpTheme() {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: kInk,
-      contentTextStyle: const TextStyle(color: Colors.white),
+      contentTextStyle: GoogleFonts.plusJakartaSans(color: Colors.white),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      titleTextStyle: const TextStyle(
+      titleTextStyle: GoogleFonts.plusJakartaSans(
         color: kInk,
         fontSize: 18,
         fontWeight: FontWeight.w800,
@@ -212,13 +232,24 @@ ThemeData _buildLookUpTheme() {
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: kBrandBlue),
     listTileTheme: const ListTileThemeData(iconColor: kBrandBlue),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: kInk,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12),
+    ),
   );
 }
 
 class ApiException implements Exception {
-  ApiException(this.message);
+  ApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
+
+  bool get isUnauthorized =>
+      statusCode == 401 || message.toLowerCase().contains('token');
 
   @override
   String toString() => message;
@@ -238,6 +269,7 @@ class ApiService {
 
   final Uri _baseUri = Uri.parse(_normalizeBaseUrl(_defaultBaseUrl));
   String? _token;
+  Future<bool> Function()? _refreshTokenHandler;
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim().replaceFirst(RegExp(r'/+$'), '');
@@ -247,6 +279,10 @@ class ApiService {
 
   void setToken(String? token) {
     _token = token;
+  }
+
+  void setRefreshTokenHandler(Future<bool> Function()? handler) {
+    _refreshTokenHandler = handler;
   }
 
   Future<Map<String, String>> _headers() async {
@@ -261,10 +297,20 @@ class ApiService {
       _baseUri.resolve(endpoint),
       headers: await _headers(),
     );
-    return _processResponse(response);
+    return _processResponse(
+      await _retryIfUnauthorized(
+        response,
+        () async =>
+            http.get(_baseUri.resolve(endpoint), headers: await _headers()),
+      ),
+    );
   }
 
-  Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
+  Future<dynamic> post(
+    String endpoint,
+    Map<String, dynamic> body, {
+    bool retryOnUnauthorized = true,
+  }) async {
     var response = await http.post(
       _baseUri.resolve(endpoint),
       headers: await _headers(),
@@ -282,7 +328,29 @@ class ApiService {
       }
     }
 
-    return _processResponse(response);
+    if (!retryOnUnauthorized) return _processResponse(response);
+
+    return _processResponse(
+      await _retryIfUnauthorized(response, () async {
+        var retry = await http.post(
+          _baseUri.resolve(endpoint),
+          headers: await _headers(),
+          body: jsonEncode(body),
+        );
+
+        if (retry.statusCode == 307 || retry.statusCode == 308) {
+          final location = retry.headers['location'];
+          if (location != null) {
+            retry = await http.post(
+              Uri.parse(location),
+              headers: await _headers(),
+              body: jsonEncode(body),
+            );
+          }
+        }
+        return retry;
+      }),
+    );
   }
 
   Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
@@ -291,7 +359,51 @@ class ApiService {
       headers: await _headers(),
       body: jsonEncode(body),
     );
-    return _processResponse(response);
+    return _processResponse(
+      await _retryIfUnauthorized(
+        response,
+        () async => http.patch(
+          _baseUri.resolve(endpoint),
+          headers: await _headers(),
+          body: jsonEncode(body),
+        ),
+      ),
+    );
+  }
+
+  Future<dynamic> uploadFile(
+    String endpoint,
+    String fieldName,
+    XFile file,
+  ) async {
+    Future<http.Response> send() async {
+      final request = http.MultipartRequest('POST', _baseUri.resolve(endpoint));
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          fieldName,
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+      return http.Response.fromStream(await request.send());
+    }
+
+    final response = await send();
+    return _processResponse(await _retryIfUnauthorized(response, send));
+  }
+
+  Future<http.Response> _retryIfUnauthorized(
+    http.Response response,
+    Future<http.Response> Function() retry,
+  ) async {
+    if (response.statusCode != 401 || _refreshTokenHandler == null) {
+      return response;
+    }
+    final refreshed = await _refreshTokenHandler!();
+    return refreshed ? retry() : response;
   }
 
   dynamic _processResponse(http.Response response) {
@@ -308,7 +420,10 @@ class ApiService {
       decoded = null;
     }
     final detail = decoded is Map ? decoded['detail'] : null;
-    throw ApiException(detail?.toString() ?? 'Error ${response.statusCode}');
+    throw ApiException(
+      detail?.toString() ?? 'Error ${response.statusCode}',
+      statusCode: response.statusCode,
+    );
   }
 }
 
@@ -327,6 +442,10 @@ class AuthService with ChangeNotifier {
   String? get cuentaId => _cuentaId;
   String? get role => _role;
   Map<String, dynamic>? get profile => _profile;
+
+  AuthService() {
+    _api.setRefreshTokenHandler(refreshAccessToken);
+  }
 
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -347,10 +466,22 @@ class AuthService with ChangeNotifier {
       await fetchProfile();
       notifyListeners();
       return true;
-    } catch (_) {
-      await logout();
-      return false;
+    } catch (e) {
+      debugPrint('Stored session is not valid: $e');
     }
+
+    try {
+      if (await refreshAccessToken()) {
+        await fetchProfile();
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Stored session refresh failed: $e');
+    }
+
+    await logout();
+    return false;
   }
 
   Future<bool> login(String email, String password) async {
@@ -400,11 +531,46 @@ class AuthService with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> refreshAccessToken() async {
+    if (_refreshToken == null) return false;
+
+    try {
+      final response = _asMap(
+        await _api.post('iam/refresh-token', {
+          'refresh_token': _refreshToken,
+        }, retryOnUnauthorized: false),
+      );
+      final newToken = response['access_token']?.toString();
+      if (newToken == null || newToken.isEmpty) return false;
+
+      _token = newToken;
+      _api.setToken(newToken);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', newToken);
+      return true;
+    } catch (e) {
+      debugPrint('Token refresh error: $e');
+      return false;
+    }
+  }
+
   Future<bool> updateProfile(Map<String, dynamic> updates) async {
     if (_cuentaId == null) return false;
 
     return _withLoading(() async {
       _profile = _asMap(await _api.patch('iam/cuenta/$_cuentaId', updates));
+      notifyListeners();
+      return true;
+    });
+  }
+
+  Future<bool> uploadProfilePhoto(XFile file) async {
+    if (_cuentaId == null) return false;
+
+    return _withLoading(() async {
+      _profile = _asMap(
+        await _api.uploadFile('iam/cuenta/$_cuentaId/foto', 'file', file),
+      );
       notifyListeners();
       return true;
     });
@@ -767,6 +933,10 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final formWidth = viewportWidth < 700
+        ? (viewportWidth - 128).clamp(280, 320).toDouble()
+        : 440.0;
 
     return Scaffold(
       body: Container(
@@ -781,8 +951,8 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
+              child: SizedBox(
+                width: formWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -813,143 +983,144 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                    Text(
-                      _isRegistering
-                          ? 'Crea tu cuenta de postulante'
-                          : 'Encuentra tu siguiente oportunidad',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
-                        color: kInk,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isRegistering
-                          ? 'Completa tus datos para empezar a postular.'
-                          : 'Inicia sesion para revisar ofertas y tu avance.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: kInkMuted,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    if (_isRegistering) ...[
-                      TextFormField(
-                        controller: _nameController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Nombre completo',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (value) =>
-                            _required(value, 'Ingresa tu nombre.'),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo electronico',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      validator: (value) {
-                        if (value == null || !value.contains('@')) {
-                          return 'Ingresa un correo valido.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _hidePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Contrasena',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          onPressed: () =>
-                              setState(() => _hidePassword = !_hidePassword),
-                          icon: Icon(
-                            _hidePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.length < 8) {
-                          return 'Debe tener al menos 8 caracteres.';
-                        }
-                        return null;
-                      },
-                    ),
-                    if (_isRegistering) ...[
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _careerController,
-                        decoration: const InputDecoration(
-                          labelText: 'Carrera o especialidad',
-                          prefixIcon: Icon(Icons.school_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Telefono',
-                          prefixIcon: Icon(Icons.phone_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _cityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Ciudad',
-                          prefixIcon: Icon(Icons.location_on_outlined),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    if (_error != null) ErrorBanner(message: _error!),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: auth.isLoading ? null : _submit,
-                      child: auth.isLoading
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
+                            Text(
                               _isRegistering
-                                  ? 'Crear cuenta'
-                                  : 'Iniciar sesion',
+                                  ? 'Crea tu cuenta de postulante'
+                                  : 'Encuentra tu siguiente oportunidad',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w800,
+                                color: kInk,
+                                letterSpacing: -0.3,
+                              ),
                             ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: auth.isLoading
-                          ? null
-                          : () => setState(() {
-                              _isRegistering = !_isRegistering;
-                              _error = null;
-                            }),
-                      child: Text(
-                        _isRegistering
-                            ? 'Ya tengo una cuenta'
-                            : 'Crear cuenta de postulante',
-                      ),
-                    ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isRegistering
+                                  ? 'Completa tus datos para empezar a postular.'
+                                  : 'Inicia sesion para revisar ofertas y tu avance.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: kInkMuted,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            if (_isRegistering) ...[
+                              TextFormField(
+                                controller: _nameController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nombre completo',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: (value) =>
+                                    _required(value, 'Ingresa tu nombre.'),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Correo electronico',
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                              validator: (value) {
+                                if (value == null || !value.contains('@')) {
+                                  return 'Ingresa un correo valido.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _hidePassword,
+                              decoration: InputDecoration(
+                                labelText: 'Contrasena',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => _hidePassword = !_hidePassword,
+                                  ),
+                                  icon: Icon(
+                                    _hidePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.length < 8) {
+                                  return 'Debe tener al menos 8 caracteres.';
+                                }
+                                return null;
+                              },
+                            ),
+                            if (_isRegistering) ...[
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _careerController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Carrera o especialidad',
+                                  prefixIcon: Icon(Icons.school_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  labelText: 'Telefono',
+                                  prefixIcon: Icon(Icons.phone_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _cityController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Ciudad',
+                                  prefixIcon: Icon(Icons.location_on_outlined),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 18),
+                            if (_error != null) ErrorBanner(message: _error!),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: auth.isLoading ? null : _submit,
+                              child: auth.isLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      _isRegistering
+                                          ? 'Crear cuenta'
+                                          : 'Iniciar sesion',
+                                    ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: auth.isLoading
+                                  ? null
+                                  : () => setState(() {
+                                      _isRegistering = !_isRegistering;
+                                      _error = null;
+                                    }),
+                              child: Text(
+                                _isRegistering
+                                    ? 'Ya tengo una cuenta'
+                                    : 'Crear cuenta de postulante',
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1374,9 +1545,15 @@ class MetricsScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: kInk,
+                letterSpacing: -0.4,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
+            const Text(
+              'Indicadores de tu actividad en la plataforma.',
+              style: TextStyle(color: kInkMuted, height: 1.35),
+            ),
+            const SizedBox(height: 20),
             GridView.count(
               crossAxisCount: MediaQuery.sizeOf(context).width > 620 ? 4 : 2,
               shrinkWrap: true,
@@ -1411,7 +1588,9 @@ class MetricsScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 22),
+            const SectionHeader(title: 'Tasa de exito'),
+            const SizedBox(height: 8),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(18),
@@ -1435,18 +1614,19 @@ class MetricsScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
-                            'Tasa de exito',
+                            'Porcentaje de exito en postulaciones',
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: kInk,
-                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: kInkMuted,
+                              fontSize: 13,
+                              height: 1.3,
                             ),
                           ),
                         ),
                         Text(
                           '${((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%',
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: kBrandBlue,
                           ),
@@ -1531,10 +1711,32 @@ class ProfileScreen extends StatelessWidget {
                   profile['email']?.toString() ?? '',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                 ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: const Text('Subir foto'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      width: 1.4,
+                    ),
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                  ),
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => PhotoUploadDialog(
+                      currentUrl: profile['foto_url']?.toString(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
+          const SectionHeader(title: 'Datos personales'),
+          const SizedBox(height: 8),
           InfoRow(
             icon: Icons.school_outlined,
             label: 'Carrera',
@@ -1550,7 +1752,7 @@ class ProfileScreen extends StatelessWidget {
             label: 'Ciudad',
             value: profile['ciudad']?.toString() ?? 'No especificada',
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
           OutlinedButton.icon(
             icon: const Icon(Icons.logout),
             label: const Text('Cerrar sesion'),
@@ -1581,7 +1783,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _careerController;
   late final TextEditingController _phoneController;
   late final TextEditingController _cityController;
-  late final TextEditingController _photoController;
   bool _isSaving = false;
 
   @override
@@ -1599,9 +1800,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     _cityController = TextEditingController(
       text: widget.profile['ciudad']?.toString() ?? '',
     );
-    _photoController = TextEditingController(
-      text: widget.profile['foto_url']?.toString() ?? '',
-    );
   }
 
   @override
@@ -1610,7 +1808,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     _careerController.dispose();
     _phoneController.dispose();
     _cityController.dispose();
-    _photoController.dispose();
     super.dispose();
   }
 
@@ -1640,14 +1837,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             TextField(
               controller: _cityController,
               decoration: const InputDecoration(labelText: 'Ciudad'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _photoController,
-              decoration: const InputDecoration(
-                labelText: 'Foto de perfil (URL)',
-                prefixIcon: Icon(Icons.photo_camera_outlined),
-              ),
             ),
           ],
         ),
@@ -1679,14 +1868,141 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         'carrera': _careerController.text.trim(),
         'telefono': _phoneController.text.trim(),
         'ciudad': _cityController.text.trim(),
-        'foto_url': _photoController.text.trim().isEmpty
-            ? null
-            : _photoController.text.trim(),
       });
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+}
+
+class PhotoUploadDialog extends StatefulWidget {
+  const PhotoUploadDialog({super.key, this.currentUrl});
+
+  final String? currentUrl;
+
+  @override
+  State<PhotoUploadDialog> createState() => _PhotoUploadDialogState();
+}
+
+class _PhotoUploadDialogState extends State<PhotoUploadDialog> {
+  final ImagePicker _picker = ImagePicker();
+  XFile? _selectedImage;
+  Uint8List? _previewBytes;
+  String? _error;
+  bool _isSaving = false;
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 86,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (bytes.length > 3 * 1024 * 1024) {
+      setState(() => _error = 'La imagen no debe superar 3 MB.');
+      return;
+    }
+    setState(() {
+      _selectedImage = picked;
+      _previewBytes = bytes;
+      _error = null;
+    });
+  }
+
+  Future<void> _save() async {
+    if (_selectedImage == null) {
+      setState(() => _error = 'Selecciona una imagen primero.');
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final success = await context.read<AuthService>().uploadProfilePhoto(
+        _selectedImage!,
+      );
+      if (!mounted) return;
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _error = 'No se pudo subir la foto.');
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.currentUrl?.trim();
+    final hasCurrent = current != null && current.isNotEmpty;
+
+    return AlertDialog(
+      title: const Text('Subir foto de perfil'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 52,
+              backgroundColor: kBrandBlue.withValues(alpha: 0.12),
+              backgroundImage: _previewBytes != null
+                  ? MemoryImage(_previewBytes!)
+                  : hasCurrent
+                  ? NetworkImage(current) as ImageProvider
+                  : null,
+              child: _previewBytes == null && !hasCurrent
+                  ? const Icon(Icons.person, color: kBrandBlue, size: 44)
+                  : null,
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(
+                _selectedImage == null
+                    ? 'Seleccionar imagen'
+                    : 'Cambiar seleccion',
+              ),
+              onPressed: _isSaving ? null : _pickImage,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Formatos admitidos: JPG, PNG, WEBP o GIF.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: kInkMuted, fontSize: 12),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _save,
+          child: _isSaving
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Subir'),
+        ),
+      ],
+    );
   }
 }
 
@@ -1790,10 +2106,13 @@ class JobCard extends StatelessWidget {
                 job['descripcion'].toString(),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey.shade800, height: 1.35),
+                style: const TextStyle(color: kInkMuted, height: 1.4),
               ),
             ],
-            const SizedBox(height: 14),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(height: 1),
+            ),
             Row(
               children: [
                 const Icon(
@@ -1893,26 +2212,46 @@ class ApplicationCard extends StatelessWidget {
             ),
             if (hitos.isNotEmpty) ...[
               const Divider(height: 24),
-              ...hitos
-                  .take(3)
-                  .map(
-                    (hito) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: IconText(
-                        icon: Icons.radio_button_checked,
-                        text:
-                            '${_formatDate(hito['fecha'])}: ${hito['descripcion'] ?? 'Actualizacion'}',
-                      ),
+              Row(
+                children: [
+                  const Icon(Icons.timeline, size: 16, color: kBrandBlue),
+                  const SizedBox(width: 6),
+                  Text(
+                    'AVANCE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: kInkMuted,
+                      letterSpacing: 1.2,
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _Timeline(items: hitos.take(3).toList(), formatDate: _formatDate),
             ],
             if (contacts.isNotEmpty) ...[
               const Divider(height: 24),
-              const Text(
-                'Feedback',
-                style: TextStyle(fontWeight: FontWeight.w800, color: kInk),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.mark_chat_read_outlined,
+                    size: 16,
+                    color: kBrandBlue,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'FEEDBACK',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: kInkMuted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               ...contacts.take(2).map((contacto) {
                 final feedback = _asMap(contacto['ultimo_feedback']);
                 return Padding(
@@ -1929,6 +2268,76 @@ class ApplicationCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _Timeline extends StatelessWidget {
+  const _Timeline({required this.items, required this.formatDate});
+
+  final List<Map<String, dynamic>> items;
+  final String Function(dynamic) formatDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(items.length, (i) {
+        final hito = items[i];
+        final isLast = i == items.length - 1;
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: kBrandBlue, width: 3),
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        color: kHairline,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formatDate(hito['fecha']),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: kInkMuted,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        hito['descripcion']?.toString() ?? 'Actualizacion',
+                        style: const TextStyle(color: kInk, height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }
@@ -2474,21 +2883,35 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: kInk,
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, right: 2, top: 2, bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              gradient: kBrandGradient,
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
-        ),
-        if (actionLabel != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
-      ],
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: kInk,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+          if (actionLabel != null)
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+        ],
+      ),
     );
   }
 }
