@@ -6,9 +6,35 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const Color kBrandBlue = Color(0xFF28348A);
+const Color kBrandBlueAlt = Color(0xFF3A4BC4);
 const Color kSkyBlue = Color(0xFF22A9E8);
 const Color kInk = Color(0xFF172033);
-const Color kSurface = Color(0xFFF5F7FB);
+const Color kInkMuted = Color(0xFF6B7591);
+const Color kSurface = Color(0xFFEFF2F9);
+const Color kHairline = Color(0xFFE6EBF4);
+const Color kFieldFill = Color(0xFFF3F5FB);
+
+/// Degradado de marca usado en cabeceras y acentos destacados.
+const LinearGradient kBrandGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [kBrandBlue, Color(0xFF2F4FBE), kSkyBlue],
+);
+
+/// Sombra suave y aireada para tarjetas y superficies elevadas.
+List<BoxShadow> softShadow({
+  double opacity = 0.08,
+  double blur = 24,
+  double y = 12,
+}) {
+  return [
+    BoxShadow(
+      color: kBrandBlue.withValues(alpha: opacity),
+      blurRadius: blur,
+      offset: Offset(0, y),
+    ),
+  ];
+}
 
 void main() {
   runApp(
@@ -30,48 +56,163 @@ class LookUpUserApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'LookUp',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: kBrandBlue,
-          primary: kBrandBlue,
-          secondary: kSkyBlue,
-          surface: Colors.white,
-        ),
-        scaffoldBackgroundColor: kSurface,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: kInk,
-          centerTitle: true,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kBrandBlue,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: kBrandBlue, width: 1.4),
-          ),
-        ),
-      ),
+      theme: _buildLookUpTheme(),
       home: const SessionGate(),
     );
   }
+}
+
+ThemeData _buildLookUpTheme() {
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: kBrandBlue,
+      primary: kBrandBlue,
+      secondary: kSkyBlue,
+      surface: Colors.white,
+    ),
+    scaffoldBackgroundColor: kSurface,
+  );
+
+  return base.copyWith(
+    textTheme: base.textTheme
+        .apply(bodyColor: kInk, displayColor: kInk)
+        .copyWith(
+          titleLarge: base.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+          bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.35),
+        ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: kInk,
+      surfaceTintColor: Colors.white,
+      centerTitle: true,
+      elevation: 0,
+      scrolledUnderElevation: 0.5,
+      titleTextStyle: TextStyle(
+        color: kInk,
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.2,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 8,
+      shadowColor: kBrandBlue.withValues(alpha: 0.10),
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: kBrandBlue,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(52),
+        elevation: 2,
+        shadowColor: kBrandBlue.withValues(alpha: 0.45),
+        textStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: kBrandBlue,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: kBrandBlue,
+        minimumSize: const Size.fromHeight(50),
+        side: BorderSide(color: kBrandBlue.withValues(alpha: 0.35), width: 1.4),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: kBrandBlue,
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: kFieldFill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      hintStyle: const TextStyle(color: kInkMuted),
+      labelStyle: const TextStyle(color: kInkMuted),
+      prefixIconColor: kInkMuted,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: kHairline, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: kBrandBlue, width: 1.6),
+      ),
+    ),
+    dividerTheme: const DividerThemeData(
+      color: kHairline,
+      thickness: 1,
+      space: 1,
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 70,
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 3,
+      shadowColor: kBrandBlue.withValues(alpha: 0.18),
+      indicatorColor: kBrandBlue.withValues(alpha: 0.12),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontSize: 11.5,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: states.contains(WidgetState.selected) ? kBrandBlue : kInkMuted,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? kBrandBlue : kInkMuted,
+          size: 24,
+        ),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: kInk,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      titleTextStyle: const TextStyle(
+        color: kInk,
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: kBrandBlue),
+    listTileTheme: const ListTileThemeData(iconColor: kBrandBlue),
+  );
 }
 
 class ApiException implements Exception {
@@ -517,14 +658,46 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/images/logo_lookup.png', width: 190),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(gradient: kBrandGradient),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 30,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
+                ),
+                child: Image.asset('assets/images/logo_lookup.png', width: 148),
+              ),
+              const SizedBox(height: 34),
+              const SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Tu busqueda laboral, en un solo lugar',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -596,28 +769,60 @@ class _AuthScreenState extends State<AuthScreen> {
     final auth = context.watch<AuthService>();
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Form(
-                key: _formKey,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE7EEFB), kSurface],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Image.asset('assets/images/logo_lookup.png', height: 92),
-                    const SizedBox(height: 20),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        margin: const EdgeInsets.only(bottom: 22),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: softShadow(opacity: 0.12, blur: 26, y: 12),
+                        ),
+                        child: Image.asset(
+                          'assets/images/logo_lookup.png',
+                          height: 64,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(26),
+                        boxShadow: softShadow(opacity: 0.10, blur: 30, y: 16),
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
                     Text(
                       _isRegistering
                           ? 'Crea tu cuenta de postulante'
                           : 'Encuentra tu siguiente oportunidad',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 23,
                         fontWeight: FontWeight.w800,
                         color: kInk,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -626,8 +831,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Completa tus datos para empezar a postular.'
                           : 'Inicia sesion para revisar ofertas y tu avance.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
+                      style: const TextStyle(
+                        color: kInkMuted,
                         height: 1.3,
                       ),
                     ),
@@ -745,6 +950,10 @@ class _AuthScreenState extends State<AuthScreen> {
                             : 'Crear cuenta de postulante',
                       ),
                     ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -843,30 +1052,53 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hola, $name',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: kInk,
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: kBrandGradient,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: softShadow(opacity: 0.30, blur: 28, y: 14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hola, $name',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.4,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tu busqueda laboral en un solo lugar.',
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tu busqueda laboral en un solo lugar.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Image.asset('assets/images/logo_lookup.png', width: 92),
-            ],
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Image.asset(
+                    'assets/images/logo_lookup.png',
+                    width: 52,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           if (data.error != null) ErrorBanner(message: data.error!),
@@ -1182,29 +1414,57 @@ class MetricsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Tasa de exito',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: kInk,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.trending_up_rounded,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Tasa de exito',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: kInk,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: kBrandBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 12,
+                        backgroundColor: kBrandBlue.withValues(alpha: 0.10),
+                        valueColor: const AlwaysStoppedAnimation(kSkyBlue),
+                        value:
+                            ((metrics['tasa_exito'] as num?)?.toDouble() ?? 0)
+                                .clamp(0, 100) /
+                            100,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      minHeight: 10,
-                      borderRadius: BorderRadius.circular(8),
-                      value:
-                          ((metrics['tasa_exito'] as num?)?.toDouble() ?? 0)
-                              .clamp(0, 100) /
-                          100,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%',
                     ),
                   ],
                 ),
@@ -1242,29 +1502,36 @@ class ProfileScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  ProfileAvatar(fotoUrl: profile['foto_url']?.toString()),
-                  const SizedBox(height: 14),
-                  Text(
-                    profile['nombre_completo']?.toString() ?? 'Postulante',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: kInk,
-                    ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 26, 18, 24),
+            decoration: BoxDecoration(
+              gradient: kBrandGradient,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: softShadow(opacity: 0.30, blur: 28, y: 14),
+            ),
+            child: Column(
+              children: [
+                ProfileAvatar(
+                  fotoUrl: profile['foto_url']?.toString(),
+                  onGradient: true,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  profile['nombre_completo']?.toString() ?? 'Postulante',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    profile['email']?.toString() ?? '',
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  profile['email']?.toString() ?? '',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -1424,23 +1691,41 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 }
 
 class ProfileAvatar extends StatelessWidget {
-  const ProfileAvatar({super.key, required this.fotoUrl});
+  const ProfileAvatar({
+    super.key,
+    required this.fotoUrl,
+    this.onGradient = false,
+  });
 
   final String? fotoUrl;
+  final bool onGradient;
 
   @override
   Widget build(BuildContext context) {
     final url = fotoUrl?.trim();
-    return CircleAvatar(
-      radius: 42,
-      backgroundColor: kBrandBlue,
-      backgroundImage: url == null || url.isEmpty ? null : NetworkImage(url),
-      onBackgroundImageError: url == null || url.isEmpty
-          ? null
-          : (exception, stackTrace) {},
-      child: url == null || url.isEmpty
-          ? const Icon(Icons.person, color: Colors.white, size: 42)
-          : null,
+    return Container(
+      padding: EdgeInsets.all(onGradient ? 4 : 0),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: onGradient ? Colors.white.withValues(alpha: 0.25) : null,
+        border: onGradient
+            ? Border.all(color: Colors.white.withValues(alpha: 0.6), width: 2)
+            : null,
+        boxShadow: onGradient
+            ? null
+            : softShadow(opacity: 0.18, blur: 18, y: 8),
+      ),
+      child: CircleAvatar(
+        radius: 42,
+        backgroundColor: onGradient ? kBrandBlueAlt : kBrandBlue,
+        backgroundImage: url == null || url.isEmpty ? null : NetworkImage(url),
+        onBackgroundImageError: url == null || url.isEmpty
+            ? null
+            : (exception, stackTrace) {},
+        child: url == null || url.isEmpty
+            ? const Icon(Icons.person, color: Colors.white, size: 42)
+            : null,
+      ),
     );
   }
 }
@@ -1511,16 +1796,32 @@ class JobCard extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
+                const Icon(
+                  Icons.payments_outlined,
+                  size: 18,
+                  color: kBrandBlue,
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     _salary(job),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: kInk,
+                    ),
                   ),
                 ),
                 FilledButton.icon(
                   onPressed: onApply,
+                  style: alreadyApplied
+                      ? FilledButton.styleFrom(
+                          backgroundColor: Colors.green.withValues(alpha: 0.15),
+                          foregroundColor: Colors.green.shade700,
+                        )
+                      : null,
                   icon: Icon(
-                    alreadyApplied ? Icons.check : Icons.send_outlined,
+                    alreadyApplied ? Icons.check_circle : Icons.send_rounded,
+                    size: 18,
                   ),
                   label: Text(alreadyApplied ? 'Postulado' : 'Postular'),
                 ),
@@ -1958,27 +2259,45 @@ class MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 18),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: kInk,
-              ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: softShadow(),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(height: 2),
-            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
-          ],
-        ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: kInk,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: kInkMuted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1998,16 +2317,37 @@ class ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      elevation: 8,
+      shadowColor: kBrandBlue.withValues(alpha: 0.10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: kBrandBlue),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kBrandBlue.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: kBrandBlue),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: kInkMuted.withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               Text(
                 title,
@@ -2034,16 +2374,26 @@ class EventCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFFEAF6FD),
-          foregroundColor: kBrandBlue,
-          child: Icon(Icons.notifications_outlined),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: kSkyBlue.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.notifications_outlined, color: kBrandBlue),
         ),
-        title: Text(event['title']?.toString() ?? 'Actualizacion'),
-        subtitle: Text(event['description']?.toString() ?? ''),
+        title: Text(
+          event['title']?.toString() ?? 'Actualizacion',
+          style: const TextStyle(fontWeight: FontWeight.w700, color: kInk),
+        ),
+        subtitle: Text(
+          event['description']?.toString() ?? '',
+          style: const TextStyle(color: kInkMuted),
+        ),
         trailing: Text(
           _formatDate(event['date']),
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          style: const TextStyle(color: kInkMuted, fontSize: 12),
         ),
       ),
     );
@@ -2066,10 +2416,45 @@ class InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(icon, color: kBrandBlue),
-        title: Text(label),
-        subtitle: Text(value),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: kBrandBlue.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: kBrandBlue, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: kInkMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: kInk,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2124,21 +2509,32 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(28),
         child: Column(
           children: [
-            Icon(icon, size: 44, color: Colors.grey.shade500),
-            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: kBrandBlue.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: kBrandBlue),
+            ),
+            const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w800, color: kInk),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: kInk,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700),
+              style: const TextStyle(color: kInkMuted, height: 1.4),
             ),
           ],
         ),
@@ -2156,19 +2552,35 @@ class ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFECEC),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFFFF1F1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD3D3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Colors.redAccent),
-          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFE0E0),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.error_outline,
+              color: Color(0xFFD23B3B),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.redAccent),
+              style: const TextStyle(
+                color: Color(0xFFB42525),
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -2212,18 +2624,31 @@ class StatusChip extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
-      child: Text(
-        label.replaceAll('_', ' ').toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label.replaceAll('_', ' ').toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
