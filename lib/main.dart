@@ -401,6 +401,18 @@ class LookUpDataService with ChangeNotifier {
     await refresh(cuentaId);
   }
 
+  Future<void> sendContactMessage(
+    String cuentaId,
+    String postulacionId,
+    String message,
+  ) async {
+    await _api.post('contacto/mensaje', {
+      'postulacion_id': postulacionId,
+      'mensaje_texto': message,
+    });
+    await fetchApplications(cuentaId);
+  }
+
   bool hasAppliedTo(String puestoId) {
     return _applications.any((application) {
       final puesto = _asMap(application['puesto']);
@@ -1693,7 +1705,7 @@ class ContactThreadCard extends StatelessWidget {
   }
 }
 
-class ContactThreadSheet extends StatelessWidget {
+class ContactThreadSheet extends StatefulWidget {
   const ContactThreadSheet({
     super.key,
     required this.application,
@@ -1704,9 +1716,30 @@ class ContactThreadSheet extends StatelessWidget {
   final List<Map<String, dynamic>> contacts;
 
   @override
+  State<ContactThreadSheet> createState() => _ContactThreadSheetState();
+}
+
+class _ContactThreadSheetState extends State<ContactThreadSheet> {
+  final _messageController = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final puesto = _asMap(application['puesto']);
-    final empresa = _asMap(application['empresa']);
+    final auth = context.watch<AuthService>();
+    final data = context.watch<LookUpDataService>();
+    final puesto = _asMap(widget.application['puesto']);
+    final empresa = _asMap(widget.application['empresa']);
+    final postulacionId =
+        widget.application['postulacion_id']?.toString() ?? '';
+    final contacts = data.contactsFor(postulacionId).isEmpty
+        ? widget.contacts
+        : data.contactsFor(postulacionId);
 
     return SafeArea(
       child: DraggableScrollableSheet(
@@ -1752,10 +1785,47 @@ class ContactThreadSheet extends StatelessWidget {
               Expanded(
                 child: ListView.builder(
                   controller: controller,
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
                   itemCount: contacts.length,
                   itemBuilder: (context, index) =>
                       ContactBubble(contact: contacts[index]),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 18,
+                  right: 18,
+                  bottom: 14 + MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        minLines: 1,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Responder a la empresa',
+                          prefixIcon: Icon(Icons.chat_bubble_outline),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      tooltip: 'Enviar',
+                      onPressed: _isSending || auth.cuentaId == null
+                          ? null
+                          : () => _send(context, auth.cuentaId!, postulacionId),
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_outlined),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1763,6 +1833,33 @@ class ContactThreadSheet extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _send(
+    BuildContext context,
+    String cuentaId,
+    String postulacionId,
+  ) async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty || postulacionId.isEmpty) return;
+
+    setState(() => _isSending = true);
+    try {
+      await context.read<LookUpDataService>().sendContactMessage(
+        cuentaId,
+        postulacionId,
+        message,
+      );
+      _messageController.clear();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
   }
 }
 
@@ -1779,18 +1876,24 @@ class ContactBubble extends StatelessWidget {
         feedback['mensaje']?.toString() ??
         'La empresa envio una actualizacion.';
     final motivo = feedback['motivo_rechazo']?.toString();
+    final isMine = contact['remitente_rol']?.toString() == 'postulante';
 
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10, right: 34),
+        margin: EdgeInsets.only(
+          bottom: 10,
+          left: isMine ? 34 : 0,
+          right: isMine ? 0 : 34,
+        ),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(8),
-            topRight: Radius.circular(8),
-            bottomRight: Radius.circular(8),
+          color: isMine ? kBrandBlue.withValues(alpha: 0.08) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(8),
+            topRight: const Radius.circular(8),
+            bottomLeft: Radius.circular(isMine ? 8 : 0),
+            bottomRight: Radius.circular(isMine ? 0 : 8),
           ),
           border: Border.all(color: kBrandBlue.withValues(alpha: 0.12)),
         ),
