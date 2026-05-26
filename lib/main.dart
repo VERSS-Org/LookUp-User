@@ -54,7 +54,9 @@ class LookUpUserApp extends StatelessWidget {
             backgroundColor: kBrandBlue,
             foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -84,7 +86,8 @@ class ApiException implements Exception {
 class ApiService {
   static const String _defaultBaseUrl = String.fromEnvironment(
     'LOOKUP_API_BASE_URL',
-    defaultValue: 'https://backend-ufl2-git-main-glitter22s-projects.vercel.app/api/',
+    defaultValue:
+        'https://backend-ufl2-git-main-glitter22s-projects.vercel.app/api/',
   );
   static final ApiService _instance = ApiService._internal();
 
@@ -113,7 +116,10 @@ class ApiService {
   }
 
   Future<dynamic> get(String endpoint) async {
-    final response = await http.get(_baseUri.resolve(endpoint), headers: await _headers());
+    final response = await http.get(
+      _baseUri.resolve(endpoint),
+      headers: await _headers(),
+    );
     return _processResponse(response);
   }
 
@@ -149,7 +155,9 @@ class ApiService {
 
   dynamic _processResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+      return response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body);
     }
 
     dynamic decoded;
@@ -206,10 +214,12 @@ class AuthService with ChangeNotifier {
 
   Future<bool> login(String email, String password) async {
     return _withLoading(() async {
-      final response = _asMap(await _api.post('iam/login', {
-        'email': email.trim(),
-        'password': password,
-      }));
+      final response = _asMap(
+        await _api.post('iam/login', {
+          'email': email.trim(),
+          'password': password,
+        }),
+      );
 
       if (response['rol'] != 'postulante') {
         throw ApiException('Esta app es solo para postulantes.');
@@ -319,7 +329,8 @@ class LookUpDataService with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   List<Map<String, dynamic>> contactsFor(String postulacionId) {
-    return _contactsByApplication[postulacionId] ?? const <Map<String, dynamic>>[];
+    return _contactsByApplication[postulacionId] ??
+        const <Map<String, dynamic>>[];
   }
 
   void clear() {
@@ -403,7 +414,9 @@ class LookUpDataService with ChangeNotifier {
       final postulacionId = application['postulacion_id']?.toString();
       if (postulacionId == null || postulacionId.isEmpty) continue;
       try {
-        final response = await _api.get('contacto/?postulacion_id=$postulacionId');
+        final response = await _api.get(
+          'contacto/?postulacion_id=$postulacionId',
+        );
         _contactsByApplication[postulacionId] = _asMapList(response);
       } catch (_) {
         _contactsByApplication[postulacionId] = <Map<String, dynamic>>[];
@@ -419,7 +432,8 @@ class LookUpDataService with ChangeNotifier {
       for (final hito in _asMapList(application['hitos'])) {
         events.add({
           'title': puesto['titulo'] ?? 'Postulacion',
-          'description': hito['descripcion'] ?? application['estado'] ?? 'Actualizacion',
+          'description':
+              hito['descripcion'] ?? application['estado'] ?? 'Actualizacion',
           'date': hito['fecha'],
         });
       }
@@ -432,7 +446,10 @@ class LookUpDataService with ChangeNotifier {
         });
       }
     }
-    events.sort((a, b) => (b['date'] ?? '').toString().compareTo((a['date'] ?? '').toString()));
+    events.sort(
+      (a, b) =>
+          (b['date'] ?? '').toString().compareTo((a['date'] ?? '').toString()),
+    );
     return events.take(5).toList();
   }
 }
@@ -581,9 +598,15 @@ class _AuthScreenState extends State<AuthScreen> {
                     Image.asset('assets/images/logo_lookup.png', height: 92),
                     const SizedBox(height: 20),
                     Text(
-                      _isRegistering ? 'Crea tu cuenta de postulante' : 'Encuentra tu siguiente oportunidad',
+                      _isRegistering
+                          ? 'Crea tu cuenta de postulante'
+                          : 'Encuentra tu siguiente oportunidad',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: kInk),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: kInk,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -591,7 +614,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Completa tus datos para empezar a postular.'
                           : 'Inicia sesion para revisar ofertas y tu avance.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        height: 1.3,
+                      ),
                     ),
                     const SizedBox(height: 26),
                     if (_isRegistering) ...[
@@ -602,7 +628,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           labelText: 'Nombre completo',
                           prefixIcon: Icon(Icons.person_outline),
                         ),
-                        validator: (value) => _required(value, 'Ingresa tu nombre.'),
+                        validator: (value) =>
+                            _required(value, 'Ingresa tu nombre.'),
                       ),
                       const SizedBox(height: 14),
                     ],
@@ -629,8 +656,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         labelText: 'Contrasena',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          onPressed: () => setState(() => _hidePassword = !_hidePassword),
-                          icon: Icon(_hidePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () =>
+                              setState(() => _hidePassword = !_hidePassword),
+                          icon: Icon(
+                            _hidePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                         ),
                       ),
                       validator: (value) {
@@ -676,19 +708,30 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? const SizedBox(
                               height: 22,
                               width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : Text(_isRegistering ? 'Crear cuenta' : 'Iniciar sesion'),
+                          : Text(
+                              _isRegistering
+                                  ? 'Crear cuenta'
+                                  : 'Iniciar sesion',
+                            ),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: auth.isLoading
                           ? null
                           : () => setState(() {
-                                _isRegistering = !_isRegistering;
-                                _error = null;
-                              }),
-                      child: Text(_isRegistering ? 'Ya tengo una cuenta' : 'Crear cuenta de postulante'),
+                              _isRegistering = !_isRegistering;
+                              _error = null;
+                            }),
+                      child: Text(
+                        _isRegistering
+                            ? 'Ya tengo una cuenta'
+                            : 'Crear cuenta de postulante',
+                      ),
                     ),
                   ],
                 ),
@@ -717,6 +760,7 @@ class _AppShellState extends State<AppShell> {
       HomeScreen(onOpenTab: (index) => setState(() => _index = index)),
       const OffersScreen(),
       const ApplicationsScreen(),
+      const ContactsScreen(),
       const MetricsScreen(),
       const ProfileScreen(),
     ];
@@ -727,11 +771,36 @@ class _AppShellState extends State<AppShell> {
         selectedIndex: _index,
         onDestinationSelected: (index) => setState(() => _index = index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-          NavigationDestination(icon: Icon(Icons.work_outline), selectedIcon: Icon(Icons.work), label: 'Ofertas'),
-          NavigationDestination(icon: Icon(Icons.fact_check_outlined), selectedIcon: Icon(Icons.fact_check), label: 'Postulaciones'),
-          NavigationDestination(icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: 'Metricas'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.work_outline),
+            selectedIcon: Icon(Icons.work),
+            label: 'Ofertas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check),
+            label: 'Postulaciones',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            selectedIcon: Icon(Icons.forum),
+            label: 'Contactos',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights),
+            label: 'Metricas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Perfil',
+          ),
         ],
       ),
     );
@@ -747,7 +816,9 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
     final data = context.watch<LookUpDataService>();
-    final name = auth.profile?['nombre_completo']?.toString().split(' ').first ?? 'Postulante';
+    final name =
+        auth.profile?['nombre_completo']?.toString().split(' ').first ??
+        'Postulante';
     final events = data.latestEvents();
 
     return RefreshIndicator(
@@ -766,9 +837,19 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hola, $name', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: kInk)),
+                    Text(
+                      'Hola, $name',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: kInk,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Tu busqueda laboral en un solo lugar.', style: TextStyle(color: Colors.grey.shade700)),
+                    Text(
+                      'Tu busqueda laboral en un solo lugar.',
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
                   ],
                 ),
               ),
@@ -819,13 +900,18 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          SectionHeader(title: 'Avisos recientes', actionLabel: 'Ver todo', onAction: () => onOpenTab(2)),
+          SectionHeader(
+            title: 'Avisos recientes',
+            actionLabel: 'Ver todo',
+            onAction: () => onOpenTab(2),
+          ),
           const SizedBox(height: 10),
           if (events.isEmpty)
             const EmptyState(
               icon: Icons.notifications_none,
               title: 'Aun no hay novedades',
-              message: 'Cuando una empresa actualice una postulacion, aparecera aqui.',
+              message:
+                  'Cuando una empresa actualice una postulacion, aparecera aqui.',
             )
           else
             ...events.map((event) => EventCard(event: event)),
@@ -850,7 +936,8 @@ class _OffersScreenState extends State<OffersScreen> {
     final auth = context.watch<AuthService>();
     final data = context.watch<LookUpDataService>();
     final filtered = data.jobs.where((job) {
-      final text = '${job['titulo']} ${job['descripcion']} ${job['ubicacion']}'.toLowerCase();
+      final text = '${job['titulo']} ${job['descripcion']} ${job['ubicacion']}'
+          .toLowerCase();
       return text.contains(_query.toLowerCase());
     }).toList();
 
@@ -870,7 +957,12 @@ class _OffersScreenState extends State<OffersScreen> {
             ),
             const SizedBox(height: 14),
             if (data.isLoading)
-              const Center(child: Padding(padding: EdgeInsets.all(28), child: CircularProgressIndicator()))
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(28),
+                  child: CircularProgressIndicator(),
+                ),
+              )
             else if (filtered.isEmpty)
               const EmptyState(
                 icon: Icons.work_off_outlined,
@@ -895,13 +987,17 @@ class _OffersScreenState extends State<OffersScreen> {
     );
   }
 
-  Future<void> _apply(BuildContext context, String cuentaId, String puestoId) async {
+  Future<void> _apply(
+    BuildContext context,
+    String cuentaId,
+    String puestoId,
+  ) async {
     try {
       await context.read<LookUpDataService>().applyToJob(cuentaId, puestoId);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Postulacion enviada.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Postulacion enviada.')));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -944,8 +1040,60 @@ class ApplicationsScreen extends StatelessWidget {
                 itemCount: data.applications.length,
                 itemBuilder: (context, index) {
                   final application = data.applications[index];
-                  final postulacionId = application['postulacion_id']?.toString() ?? '';
+                  final postulacionId =
+                      application['postulacion_id']?.toString() ?? '';
                   return ApplicationCard(
+                    application: application,
+                    contacts: data.contactsFor(postulacionId),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class ContactsScreen extends StatelessWidget {
+  const ContactsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final data = context.watch<LookUpDataService>();
+    final threads = data.applications.where((application) {
+      final postulacionId = application['postulacion_id']?.toString() ?? '';
+      return data.contactsFor(postulacionId).isNotEmpty;
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contactos')),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          final cuentaId = auth.cuentaId;
+          if (cuentaId != null) {
+            await context.read<LookUpDataService>().fetchApplications(cuentaId);
+          }
+        },
+        child: threads.isEmpty
+            ? ListView(
+                padding: const EdgeInsets.all(18),
+                children: const [
+                  EmptyState(
+                    icon: Icons.forum_outlined,
+                    title: 'Aun no tienes mensajes',
+                    message:
+                        'Cuando una empresa te escriba sobre una postulacion, aparecera aqui.',
+                  ),
+                ],
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                itemCount: threads.length,
+                itemBuilder: (context, index) {
+                  final application = threads[index];
+                  final postulacionId =
+                      application['postulacion_id']?.toString() ?? '';
+                  return ContactThreadCard(
                     application: application,
                     contacts: data.contactsFor(postulacionId),
                   );
@@ -979,7 +1127,10 @@ class MetricsScreen extends StatelessWidget {
           children: [
             Text(
               'Resumen de tu proceso',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: kInk),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: kInk,
+              ),
             ),
             const SizedBox(height: 16),
             GridView.count(
@@ -990,10 +1141,30 @@ class MetricsScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               childAspectRatio: 1.2,
               children: [
-                MetricTile(label: 'Postulaciones', value: '${metrics['total_postulaciones'] ?? 0}', icon: Icons.send_outlined, color: kBrandBlue),
-                MetricTile(label: 'Entrevistas', value: '${metrics['total_entrevistas'] ?? 0}', icon: Icons.event_available_outlined, color: kSkyBlue),
-                MetricTile(label: 'Ofertas', value: '${metrics['total_exitos'] ?? 0}', icon: Icons.emoji_events_outlined, color: Colors.green),
-                MetricTile(label: 'Rechazos', value: '${metrics['total_rechazos'] ?? 0}', icon: Icons.close_outlined, color: Colors.redAccent),
+                MetricTile(
+                  label: 'Postulaciones',
+                  value: '${metrics['total_postulaciones'] ?? 0}',
+                  icon: Icons.send_outlined,
+                  color: kBrandBlue,
+                ),
+                MetricTile(
+                  label: 'Entrevistas',
+                  value: '${metrics['total_entrevistas'] ?? 0}',
+                  icon: Icons.event_available_outlined,
+                  color: kSkyBlue,
+                ),
+                MetricTile(
+                  label: 'Ofertas',
+                  value: '${metrics['total_exitos'] ?? 0}',
+                  icon: Icons.emoji_events_outlined,
+                  color: Colors.green,
+                ),
+                MetricTile(
+                  label: 'Rechazos',
+                  value: '${metrics['total_rechazos'] ?? 0}',
+                  icon: Icons.close_outlined,
+                  color: Colors.redAccent,
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -1003,15 +1174,26 @@ class MetricsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tasa de exito', style: TextStyle(fontWeight: FontWeight.w700, color: kInk)),
+                    const Text(
+                      'Tasa de exito',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: kInk,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
                       minHeight: 10,
                       borderRadius: BorderRadius.circular(8),
-                      value: ((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).clamp(0, 100) / 100,
+                      value:
+                          ((metrics['tasa_exito'] as num?)?.toDouble() ?? 0)
+                              .clamp(0, 100) /
+                          100,
                     ),
                     const SizedBox(height: 8),
-                    Text('${((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%'),
+                    Text(
+                      '${((metrics['tasa_exito'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%',
+                    ),
                   ],
                 ),
               ),
@@ -1053,27 +1235,42 @@ class ProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               child: Column(
                 children: [
-                  const CircleAvatar(
-                    radius: 42,
-                    backgroundColor: kBrandBlue,
-                    child: Icon(Icons.person, color: Colors.white, size: 42),
-                  ),
+                  ProfileAvatar(fotoUrl: profile['foto_url']?.toString()),
                   const SizedBox(height: 14),
                   Text(
                     profile['nombre_completo']?.toString() ?? 'Postulante',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: kInk),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: kInk,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text(profile['email']?.toString() ?? '', style: TextStyle(color: Colors.grey.shade700)),
+                  Text(
+                    profile['email']?.toString() ?? '',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
-          InfoRow(icon: Icons.school_outlined, label: 'Carrera', value: profile['carrera']?.toString() ?? 'No especificada'),
-          InfoRow(icon: Icons.phone_outlined, label: 'Telefono', value: profile['telefono']?.toString() ?? 'No especificado'),
-          InfoRow(icon: Icons.location_on_outlined, label: 'Ciudad', value: profile['ciudad']?.toString() ?? 'No especificada'),
+          InfoRow(
+            icon: Icons.school_outlined,
+            label: 'Carrera',
+            value: profile['carrera']?.toString() ?? 'No especificada',
+          ),
+          InfoRow(
+            icon: Icons.phone_outlined,
+            label: 'Telefono',
+            value: profile['telefono']?.toString() ?? 'No especificado',
+          ),
+          InfoRow(
+            icon: Icons.location_on_outlined,
+            label: 'Ciudad',
+            value: profile['ciudad']?.toString() ?? 'No especificada',
+          ),
           const SizedBox(height: 18),
           OutlinedButton.icon(
             icon: const Icon(Icons.logout),
@@ -1105,15 +1302,27 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _careerController;
   late final TextEditingController _phoneController;
   late final TextEditingController _cityController;
+  late final TextEditingController _photoController;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.profile['nombre_completo']?.toString() ?? '');
-    _careerController = TextEditingController(text: widget.profile['carrera']?.toString() ?? '');
-    _phoneController = TextEditingController(text: widget.profile['telefono']?.toString() ?? '');
-    _cityController = TextEditingController(text: widget.profile['ciudad']?.toString() ?? '');
+    _nameController = TextEditingController(
+      text: widget.profile['nombre_completo']?.toString() ?? '',
+    );
+    _careerController = TextEditingController(
+      text: widget.profile['carrera']?.toString() ?? '',
+    );
+    _phoneController = TextEditingController(
+      text: widget.profile['telefono']?.toString() ?? '',
+    );
+    _cityController = TextEditingController(
+      text: widget.profile['ciudad']?.toString() ?? '',
+    );
+    _photoController = TextEditingController(
+      text: widget.profile['foto_url']?.toString() ?? '',
+    );
   }
 
   @override
@@ -1122,6 +1331,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     _careerController.dispose();
     _phoneController.dispose();
     _cityController.dispose();
+    _photoController.dispose();
     super.dispose();
   }
 
@@ -1133,13 +1343,33 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nombre completo')),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Nombre completo'),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _careerController, decoration: const InputDecoration(labelText: 'Carrera')),
+            TextField(
+              controller: _careerController,
+              decoration: const InputDecoration(labelText: 'Carrera'),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Telefono')),
+            TextField(
+              controller: _phoneController,
+              decoration: const InputDecoration(labelText: 'Telefono'),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _cityController, decoration: const InputDecoration(labelText: 'Ciudad')),
+            TextField(
+              controller: _cityController,
+              decoration: const InputDecoration(labelText: 'Ciudad'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _photoController,
+              decoration: const InputDecoration(
+                labelText: 'Foto de perfil (URL)',
+                prefixIcon: Icon(Icons.photo_camera_outlined),
+              ),
+            ),
           ],
         ),
       ),
@@ -1151,7 +1381,11 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         FilledButton(
           onPressed: _isSaving ? null : _save,
           child: _isSaving
-              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Guardar'),
         ),
       ],
@@ -1166,11 +1400,36 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         'carrera': _careerController.text.trim(),
         'telefono': _phoneController.text.trim(),
         'ciudad': _cityController.text.trim(),
+        'foto_url': _photoController.text.trim().isEmpty
+            ? null
+            : _photoController.text.trim(),
       });
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+}
+
+class ProfileAvatar extends StatelessWidget {
+  const ProfileAvatar({super.key, required this.fotoUrl});
+
+  final String? fotoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = fotoUrl?.trim();
+    return CircleAvatar(
+      radius: 42,
+      backgroundColor: kBrandBlue,
+      backgroundImage: url == null || url.isEmpty ? null : NetworkImage(url),
+      onBackgroundImageError: url == null || url.isEmpty
+          ? null
+          : (exception, stackTrace) {},
+      child: url == null || url.isEmpty
+          ? const Icon(Icons.person, color: Colors.white, size: 42)
+          : null,
+    );
   }
 }
 
@@ -1201,7 +1460,11 @@ class JobCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     job['titulo']?.toString() ?? 'Oferta sin titulo',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kInk),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: kInk,
+                    ),
                   ),
                 ),
                 StatusChip(label: job['estado']?.toString() ?? 'abierto'),
@@ -1212,8 +1475,16 @@ class JobCard extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
-                IconText(icon: Icons.location_on_outlined, text: job['ubicacion']?.toString() ?? 'Ubicacion no especificada'),
-                IconText(icon: Icons.badge_outlined, text: _contractLabel(job['tipo_contrato']?.toString())),
+                IconText(
+                  icon: Icons.location_on_outlined,
+                  text:
+                      job['ubicacion']?.toString() ??
+                      'Ubicacion no especificada',
+                ),
+                IconText(
+                  icon: Icons.badge_outlined,
+                  text: _contractLabel(job['tipo_contrato']?.toString()),
+                ),
               ],
             ),
             if (job['descripcion'] != null) ...[
@@ -1228,10 +1499,17 @@ class JobCard extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                Expanded(child: Text(_salary(job), style: const TextStyle(fontWeight: FontWeight.w600))),
+                Expanded(
+                  child: Text(
+                    _salary(job),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
                 FilledButton.icon(
                   onPressed: onApply,
-                  icon: Icon(alreadyApplied ? Icons.check : Icons.send_outlined),
+                  icon: Icon(
+                    alreadyApplied ? Icons.check : Icons.send_outlined,
+                  ),
                   label: Text(alreadyApplied ? 'Postulado' : 'Postular'),
                 ),
               ],
@@ -1244,7 +1522,11 @@ class JobCard extends StatelessWidget {
 }
 
 class ApplicationCard extends StatelessWidget {
-  const ApplicationCard({super.key, required this.application, required this.contacts});
+  const ApplicationCard({
+    super.key,
+    required this.application,
+    required this.contacts,
+  });
 
   final Map<String, dynamic> application;
   final List<Map<String, dynamic>> contacts;
@@ -1271,34 +1553,52 @@ class ApplicationCard extends StatelessWidget {
                     children: [
                       Text(
                         puesto['titulo']?.toString() ?? 'Puesto',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: kInk),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: kInk,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text(empresa['nombre']?.toString() ?? 'Empresa no especificada'),
+                      Text(
+                        empresa['nombre']?.toString() ??
+                            'Empresa no especificada',
+                      ),
                     ],
                   ),
                 ),
-                StatusChip(label: application['estado']?.toString() ?? 'pendiente'),
+                StatusChip(
+                  label: application['estado']?.toString() ?? 'pendiente',
+                ),
               ],
             ),
             const SizedBox(height: 12),
             IconText(
               icon: Icons.calendar_today_outlined,
-              text: 'Postulado: ${_formatDate(application['fecha_postulacion'])}',
+              text:
+                  'Postulado: ${_formatDate(application['fecha_postulacion'])}',
             ),
             if (hitos.isNotEmpty) ...[
               const Divider(height: 24),
-              ...hitos.take(3).map((hito) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: IconText(
-                      icon: Icons.radio_button_checked,
-                      text: '${_formatDate(hito['fecha'])}: ${hito['descripcion'] ?? 'Actualizacion'}',
+              ...hitos
+                  .take(3)
+                  .map(
+                    (hito) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: IconText(
+                        icon: Icons.radio_button_checked,
+                        text:
+                            '${_formatDate(hito['fecha'])}: ${hito['descripcion'] ?? 'Actualizacion'}',
+                      ),
                     ),
-                  )),
+                  ),
             ],
             if (contacts.isNotEmpty) ...[
               const Divider(height: 24),
-              const Text('Feedback', style: TextStyle(fontWeight: FontWeight.w800, color: kInk)),
+              const Text(
+                'Feedback',
+                style: TextStyle(fontWeight: FontWeight.w800, color: kInk),
+              ),
               const SizedBox(height: 8),
               ...contacts.take(2).map((contacto) {
                 final feedback = _asMap(contacto['ultimo_feedback']);
@@ -1306,7 +1606,9 @@ class ApplicationCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: IconText(
                     icon: Icons.mark_email_read_outlined,
-                    text: feedback['mensaje']?.toString() ?? 'La empresa envio feedback.',
+                    text:
+                        feedback['mensaje']?.toString() ??
+                        'La empresa envio feedback.',
                   ),
                 );
               }),
@@ -1315,6 +1617,225 @@ class ApplicationCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class ContactThreadCard extends StatelessWidget {
+  const ContactThreadCard({
+    super.key,
+    required this.application,
+    required this.contacts,
+  });
+
+  final Map<String, dynamic> application;
+  final List<Map<String, dynamic>> contacts;
+
+  @override
+  Widget build(BuildContext context) {
+    final puesto = _asMap(application['puesto']);
+    final empresa = _asMap(application['empresa']);
+    final latest = contacts.isEmpty ? const <String, dynamic>{} : contacts.last;
+    final latestFeedback = _asMap(latest['ultimo_feedback']);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) =>
+              ContactThreadSheet(application: application, contacts: contacts),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: kBrandBlue.withValues(alpha: 0.1),
+                child: const Icon(Icons.business_outlined, color: kBrandBlue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      puesto['titulo']?.toString() ?? 'Postulacion',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: kInk,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      empresa['nombre']?.toString() ?? 'Empresa',
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      latestFeedback['mensaje']?.toString() ??
+                          'La empresa envio una actualizacion.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: kBrandBlue),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ContactThreadSheet extends StatelessWidget {
+  const ContactThreadSheet({
+    super.key,
+    required this.application,
+    required this.contacts,
+  });
+
+  final Map<String, dynamic> application;
+  final List<Map<String, dynamic>> contacts;
+
+  @override
+  Widget build(BuildContext context) {
+    final puesto = _asMap(application['puesto']);
+    final empresa = _asMap(application['empresa']);
+
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.74,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        builder: (context, controller) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            puesto['titulo']?.toString() ?? 'Postulacion',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: kInk,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            empresa['nombre']?.toString() ?? 'Empresa',
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                  itemCount: contacts.length,
+                  itemBuilder: (context, index) =>
+                      ContactBubble(contact: contacts[index]),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ContactBubble extends StatelessWidget {
+  const ContactBubble({super.key, required this.contact});
+
+  final Map<String, dynamic> contact;
+
+  @override
+  Widget build(BuildContext context) {
+    final feedback = _asMap(contact['ultimo_feedback']);
+    final tipo = feedback['tipo']?.toString() ?? 'comentario';
+    final mensaje =
+        feedback['mensaje']?.toString() ??
+        'La empresa envio una actualizacion.';
+    final motivo = feedback['motivo_rechazo']?.toString();
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10, right: 34),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(8),
+            topRight: Radius.circular(8),
+            bottomRight: Radius.circular(8),
+          ),
+          border: Border.all(color: kBrandBlue.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _feedbackLabel(tipo),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: kBrandBlue,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(mensaje, style: const TextStyle(color: kInk)),
+            if (motivo != null && motivo.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Motivo: $motivo',
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              _formatDate(contact['fecha_hora']),
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _feedbackLabel(String tipo) {
+    const labels = {
+      'comentario': 'COMENTARIO',
+      'aprobacion': 'APROBACION',
+      'rechazo': 'RECHAZO',
+      'otro': 'OTRO',
+    };
+    return labels[tipo] ?? tipo.toUpperCase();
   }
 }
 
@@ -1343,7 +1864,14 @@ class MetricTile extends StatelessWidget {
           children: [
             Icon(icon, color: color),
             const SizedBox(height: 18),
-            Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: kInk)),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: kInk,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
           ],
@@ -1378,7 +1906,13 @@ class ActionTile extends StatelessWidget {
             children: [
               Icon(icon, color: kBrandBlue),
               const SizedBox(height: 16),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: kInk)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: kInk,
+                ),
+              ),
             ],
           ),
         ),
@@ -1404,14 +1938,22 @@ class EventCard extends StatelessWidget {
         ),
         title: Text(event['title']?.toString() ?? 'Actualizacion'),
         subtitle: Text(event['description']?.toString() ?? ''),
-        trailing: Text(_formatDate(event['date']), style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+        trailing: Text(
+          _formatDate(event['date']),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
       ),
     );
   }
 }
 
 class InfoRow extends StatelessWidget {
-  const InfoRow({super.key, required this.icon, required this.label, required this.value});
+  const InfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final String label;
@@ -1431,7 +1973,12 @@ class InfoRow extends StatelessWidget {
 }
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, this.actionLabel, this.onAction});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
 
   final String title;
   final String? actionLabel;
@@ -1442,16 +1989,29 @@ class SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kInk)),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: kInk,
+            ),
+          ),
         ),
-        if (actionLabel != null) TextButton(onPressed: onAction, child: Text(actionLabel!)),
+        if (actionLabel != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],
     );
   }
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.icon, required this.title, required this.message});
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
 
   final IconData icon;
   final String title;
@@ -1466,9 +2026,17 @@ class EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 44, color: Colors.grey.shade500),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, color: kInk)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, color: kInk),
+            ),
             const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade700)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
           ],
         ),
       ),
@@ -1494,7 +2062,12 @@ class ErrorBanner extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: const TextStyle(color: Colors.redAccent))),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
         ],
       ),
     );
@@ -1543,7 +2116,11 @@ class StatusChip extends StatelessWidget {
       ),
       child: Text(
         label.replaceAll('_', ' ').toUpperCase(),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }
