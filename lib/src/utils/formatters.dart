@@ -94,11 +94,12 @@ String normalizeSearchText(Object? value) {
 
 String contractLabel(String? value) {
   const labels = {
-    'tiempo_completo': 'Tiempo completo',
-    'medio_tiempo': 'Medio tiempo',
+    'tiempo_completo': 'Jornada Completa',
+    'medio_tiempo': 'Jornada Parcial',
     'temporal': 'Temporal',
+    // Compatibilidad de lectura con vacantes antiguas.
     'freelance': 'Freelance',
-    'practicas': 'Practicas',
+    'practicas': 'Prácticas Preprofesionales',
   };
   if (value == null || value.isEmpty) return 'Contrato no especificado';
   return labels[value] ?? value.replaceAll('_', ' ');
