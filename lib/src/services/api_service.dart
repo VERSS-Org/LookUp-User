@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 class ApiException implements Exception {
-  ApiException(this.message, {this.statusCode});
+  ApiException(this.message, {this.statusCode, this.isConnectionError = false});
 
   final String message;
   final int? statusCode;
+  final bool isConnectionError;
 
   bool get isUnauthorized =>
       statusCode == 401 || message.toLowerCase().contains('token');
@@ -26,6 +28,7 @@ class ApiService {
     defaultValue: 'http://localhost:8000/api/',
   );
   static final ApiService _instance = ApiService._internal();
+  static const Duration _requestTimeout = Duration(seconds: 8);
 
   factory ApiService() => _instance;
 
@@ -57,16 +60,10 @@ class ApiService {
   }
 
   Future<dynamic> get(String endpoint) async {
-    final response = await http.get(
-      _baseUri.resolve(endpoint),
-      headers: _headers(),
-    );
-    return _processResponse(
-      await _retryIfUnauthorized(
-        response,
-        () => http.get(_baseUri.resolve(endpoint), headers: _headers()),
-      ),
-    );
+    Future<http.Response> send() =>
+        _send(() => http.get(_baseUri.resolve(endpoint), headers: _headers()));
+    final response = await send();
+    return _processResponse(await _retryIfUnauthorized(response, send));
   }
 
   Future<dynamic> post(
@@ -75,10 +72,12 @@ class ApiService {
     bool retryOnUnauthorized = true,
   }) async {
     Future<http.Response> send() async {
-      var response = await http.post(
-        _baseUri.resolve(endpoint),
-        headers: _headers(),
-        body: jsonEncode(body),
+      var response = await _send(
+        () => http.post(
+          _baseUri.resolve(endpoint),
+          headers: _headers(),
+          body: jsonEncode(body),
+        ),
       );
 
       // http no reenvia el POST en redirecciones 307/308 (p. ej. barra final).
@@ -88,10 +87,12 @@ class ApiService {
           final redirectUri =
               response.request?.url.resolve(location) ??
               _baseUri.resolve(location);
-          response = await http.post(
-            redirectUri,
-            headers: _headers(),
-            body: jsonEncode(body),
+          response = await _send(
+            () => http.post(
+              redirectUri,
+              headers: _headers(),
+              body: jsonEncode(body),
+            ),
           );
         }
       }
@@ -104,17 +105,20 @@ class ApiService {
   }
 
   Future<dynamic> delete(String endpoint) async {
-    Future<http.Response> send() =>
-        http.delete(_baseUri.resolve(endpoint), headers: _headers());
+    Future<http.Response> send() => _send(
+      () => http.delete(_baseUri.resolve(endpoint), headers: _headers()),
+    );
     final response = await send();
     return _processResponse(await _retryIfUnauthorized(response, send));
   }
 
   Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
-    Future<http.Response> send() => http.patch(
-      _baseUri.resolve(endpoint),
-      headers: _headers(),
-      body: jsonEncode(body),
+    Future<http.Response> send() => _send(
+      () => http.patch(
+        _baseUri.resolve(endpoint),
+        headers: _headers(),
+        body: jsonEncode(body),
+      ),
     );
     final response = await send();
     return _processResponse(await _retryIfUnauthorized(response, send));
@@ -137,7 +141,7 @@ class ApiService {
           filename: file.name,
         ),
       );
-      return http.Response.fromStream(await request.send());
+      return _send(() async => http.Response.fromStream(await request.send()));
     }
 
     final response = await send();
@@ -153,6 +157,22 @@ class ApiService {
     }
     final refreshed = await _refreshTokenHandler!();
     return refreshed ? retry() : response;
+  }
+
+  Future<http.Response> _send(Future<http.Response> Function() request) async {
+    try {
+      return await request().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException(
+        'El servidor tardó demasiado en responder. Inténtalo nuevamente.',
+        isConnectionError: true,
+      );
+    } on http.ClientException {
+      throw ApiException(
+        'No se pudo conectar con el servidor. Verifica que esté disponible.',
+        isConnectionError: true,
+      );
+    }
   }
 
   dynamic _processResponse(http.Response response) {

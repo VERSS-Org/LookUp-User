@@ -19,6 +19,11 @@ const Map<String, String> stringsEs = {
   'common.loading': 'Cargando…',
   'common.error.connection':
       'No se pudo conectar con el servidor. Verifica tu conexión.',
+  'boot.error.title': 'No pudimos iniciar LookUp',
+  'boot.error.connection':
+      'No fue posible recuperar tu sesión. Verifica que el servidor esté disponible y vuelve a intentarlo.',
+  'boot.error.timeout':
+      'La carga está tardando más de lo esperado. Vuelve a intentarlo.',
   'common.not_specified': 'No especificado',
   'common.not_specified_f': 'No especificada',
   'common.applicant': 'Postulante',
@@ -234,11 +239,11 @@ const Map<String, String> stringsEs = {
   'estado.cerrado': 'Cerrada',
 
   // Contratos
-  'contrato.tiempo_completo': 'Tiempo completo',
-  'contrato.medio_tiempo': 'Medio tiempo',
+  'contrato.tiempo_completo': 'Jornada Completa',
+  'contrato.medio_tiempo': 'Jornada Parcial',
   'contrato.temporal': 'Temporal',
   'contrato.freelance': 'Freelance',
-  'contrato.practicas': 'Prácticas',
+  'contrato.practicas': 'Prácticas Preprofesionales',
   'contrato.na': 'Contrato no especificado',
   // Notificaciones
   'notif.title': 'Notificaciones',
@@ -287,6 +292,11 @@ const Map<String, String> stringsEn = {
   'common.loading': 'Loading…',
   'common.error.connection':
       'Could not reach the server. Check your connection.',
+  'boot.error.title': 'We could not start LookUp',
+  'boot.error.connection':
+      'We could not restore your session. Check that the server is available and try again.',
+  'boot.error.timeout':
+      'Loading is taking longer than expected. Please try again.',
   'common.not_specified': 'Not specified',
   'common.not_specified_f': 'Not specified',
   'common.applicant': 'Applicant',
@@ -485,11 +495,11 @@ const Map<String, String> stringsEn = {
   'estado.abierto': 'Open',
   'estado.cerrado': 'Closed',
 
-  'contrato.tiempo_completo': 'Full time',
-  'contrato.medio_tiempo': 'Part time',
+  'contrato.tiempo_completo': 'Full-time',
+  'contrato.medio_tiempo': 'Part-time',
   'contrato.temporal': 'Temporary',
   'contrato.freelance': 'Freelance',
-  'contrato.practicas': 'Internship',
+  'contrato.practicas': 'Pre-professional Internship',
   'contrato.na': 'Contract not specified',
   'notif.title': 'Notifications',
   'notif.empty.title': 'No notifications for now',

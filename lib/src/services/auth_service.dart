@@ -67,7 +67,8 @@ class AuthService with ChangeNotifier {
       await fetchProfile();
       notifyListeners();
       return true;
-    } catch (e) {
+    } on ApiException catch (e) {
+      if (e.isConnectionError || (e.statusCode ?? 0) >= 500) rethrow;
       debugPrint('Stored session is not valid: $e');
     }
 
@@ -77,7 +78,8 @@ class AuthService with ChangeNotifier {
         notifyListeners();
         return true;
       }
-    } catch (e) {
+    } on ApiException catch (e) {
+      if (e.isConnectionError || (e.statusCode ?? 0) >= 500) rethrow;
       debugPrint('Stored session refresh failed: $e');
     }
 
@@ -166,10 +168,11 @@ class AuthService with ChangeNotifier {
       if (e.isUnauthorized && generation == _sessionGeneration) {
         await _clearSession();
       }
+      if (e.isConnectionError || (e.statusCode ?? 0) >= 500) rethrow;
       return false;
     } catch (e) {
       debugPrint('Token refresh error: $e');
-      return false;
+      rethrow;
     }
   }
 

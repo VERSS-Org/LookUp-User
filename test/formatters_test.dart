@@ -47,8 +47,14 @@ void main() {
 
   group('contractLabel', () {
     test('traduce los tipos conocidos', () {
-      expect(contractLabel('tiempo_completo'), 'Tiempo completo');
-      expect(contractLabel('practicas'), 'Practicas');
+      expect(contractLabel('tiempo_completo'), 'Jornada Completa');
+      expect(contractLabel('medio_tiempo'), 'Jornada Parcial');
+      expect(contractLabel('practicas'), 'Prácticas Preprofesionales');
+      expect(contractLabel('temporal'), 'Temporal');
+    });
+
+    test('mantiene compatibilidad con contratos legacy', () {
+      expect(contractLabel('freelance'), 'Freelance');
     });
 
     test('maneja valores nulos o desconocidos', () {
