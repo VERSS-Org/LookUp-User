@@ -3,9 +3,9 @@
     "short_name": "LookUp",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F5F7FB",
+    "background_color": "#FFFFFF",
     "theme_color": "#28348A",
-    "description": "Aplicacion de postulantes de LookUp.",
+    "description": "Aplicación para postulantes de LookUp.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
