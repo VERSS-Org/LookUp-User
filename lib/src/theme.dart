@@ -147,11 +147,13 @@ extension LookUpColorsX on BuildContext {
 
 /// Normaliza los estados a su forma canonica (el backend acepta ambas apps
 /// deben mostrar exactamente el mismo conjunto de estados).
-String canonicalEstado(String estado) => switch (estado) {
-  'rechazo' => 'rechazado',
-  'oferta' => 'aceptado',
-  _ => estado,
-};
+String canonicalEstado(String estado) =>
+    switch (estado.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_')) {
+      'rechazo' => 'rechazado',
+      'oferta' => 'aceptado',
+      'en_progreso' => 'en_revision',
+      final normalizado => normalizado,
+    };
 
 /// Color, etiqueta traducida e icono de cada estado del proceso.
 ({Color color, String label, IconData icon}) estadoStyle(

@@ -8,6 +8,7 @@ import 'package:lookup_user/src/services/data_service.dart';
 import 'package:lookup_user/src/services/locale_controller.dart';
 import 'package:lookup_user/src/theme.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
+import 'package:lookup_user/src/utils/portal_links.dart';
 import 'package:lookup_user/src/widgets/common.dart';
 
 /// Acceso: un único formulario centrado, limpio y directo.
@@ -84,6 +85,20 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) {
         setState(() => _error = context.tr('common.error.connection'));
       }
+    }
+  }
+
+  Future<void> _openRecruiterPortal() async {
+    var opened = false;
+    try {
+      opened = await PortalLinks.openRecruiterPortal();
+    } catch (_) {
+      // Algunos navegadores bloquean aperturas externas; se informa abajo.
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('auth.company.unavailable'))),
+      );
     }
   }
 
@@ -271,6 +286,20 @@ class _AuthScreenState extends State<AuthScreen> {
                             ? context.t('auth.have_account')
                             : context.t('auth.create_account'),
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    Divider(color: c.border),
+                    const SizedBox(height: 6),
+                    Text(
+                      context.t('auth.company.question'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: c.inkMuted, fontSize: 13.5),
+                    ),
+                    TextButton.icon(
+                      key: const Key('open-recruiter-portal'),
+                      onPressed: auth.isLoading ? null : _openRecruiterPortal,
+                      icon: const Icon(Icons.business_outlined, size: 18),
+                      label: Text(context.t('auth.company.action')),
                     ),
                   ],
                 ),

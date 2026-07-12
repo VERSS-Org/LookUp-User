@@ -32,7 +32,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  // 0..3: pestañas · 4: mensajes · 5: notificaciones · 6: perfil
+  // 0..3: pestañas · 4: mensajes · 6: perfil
   int _index = 0;
   int _primaryIndex = 0;
   final SearchController _searchController = SearchController();
@@ -141,7 +141,24 @@ class _AppShellState extends State<AppShell> {
   void _openNotifications() {
     final isWide = MediaQuery.sizeOf(context).width >= 960;
     if (isWide) {
-      _select(5);
+      context.read<LookUpDataService>().markNotificationsSeen();
+      final size = MediaQuery.sizeOf(context);
+      showDialog<void>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.12),
+        builder: (dialogContext) => Dialog(
+          alignment: Alignment.topRight,
+          insetPadding: const EdgeInsets.only(top: 68, right: 68, left: 20),
+          backgroundColor: Colors.transparent,
+          elevation: 8,
+          child: SizedBox(
+            key: const Key('notifications-popover'),
+            width: 420,
+            height: (size.height - 92).clamp(320, 560).toDouble(),
+            child: const NotificationsScreen(popup: true),
+          ),
+        ),
+      );
     } else {
       context.read<LookUpDataService>().markNotificationsSeen();
       Navigator.push(
@@ -179,8 +196,6 @@ class _AppShellState extends State<AppShell> {
         return const MetricsScreen();
       case 4:
         return const MessagesScreen(embedded: true);
-      case 5:
-        return const NotificationsScreen(embedded: true);
       default:
         return const ProfileScreen(embedded: true);
     }
@@ -371,6 +386,12 @@ class _TopNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final auth = context.watch<AuthService>();
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final searchWidth = viewportWidth >= 1360
+        ? 420.0
+        : viewportWidth >= 1180
+        ? 340.0
+        : 250.0;
     final nombre =
         auth.profile?['nombre_completo']?.toString() ??
         context.t('common.applicant');
@@ -402,7 +423,7 @@ class _TopNavBar extends StatelessWidget {
             ),
           const Spacer(),
           SizedBox(
-            width: 260,
+            width: searchWidth,
             child: _GlobalSearch(
               controller: searchController,
               onChanged: onSearchChanged,

@@ -4,6 +4,7 @@ library;
 import 'package:flutter/widgets.dart';
 
 import 'package:lookup_user/src/services/locale_controller.dart';
+import 'package:lookup_user/src/theme.dart';
 
 /// Etiqueta traducida del tipo de contrato.
 String contractLabelT(BuildContext context, String? value) {
@@ -152,22 +153,44 @@ String formatDate(dynamic value) {
 /// Reemplaza los códigos de estado dentro de textos generados por el backend
 /// ("Estado actualizado de pendiente a en_revision") por su etiqueta legible.
 String prettyEventText(BuildContext context, String text) {
-  const estados = [
-    'en_revision',
-    'pendiente',
-    'entrevista',
-    'aceptado',
-    'oferta',
-    'rechazado',
-    'rechazo',
-  ];
-  var result = text;
-  for (final estado in estados) {
-    final key = 'estado.${estado == 'rechazo' ? 'rechazado' : estado}';
-    final label = context.tr(key);
-    result = result.replaceAll(estado, label.toLowerCase());
+  final token = RegExp(
+    r'\b(en_revision|pendiente|entrevista|aceptado|oferta|rechazado|rechazo)\b',
+    caseSensitive: false,
+  );
+  return text.replaceAllMapped(token, (match) {
+    final estado = canonicalEstado(match.group(0) ?? '');
+    return context.tr('estado.$estado').toLowerCase();
+  });
+}
+
+/// Presenta hitos nuevos usando sus campos estructurados y conserva soporte
+/// para registros historicos que solo incluyen una descripcion libre.
+String eventDescriptionT(BuildContext context, Map<String, dynamic> event) {
+  String stateLabel(Object? raw) {
+    final canonical = canonicalEstado(raw?.toString() ?? '');
+    if (canonical.isEmpty) return '';
+    final key = 'estado.$canonical';
+    final translated = context.tr(key);
+    return translated == key ? canonical.replaceAll('_', ' ') : translated;
   }
-  return result;
+
+  final eventType = event['tipo_evento']?.toString();
+  final previous = stateLabel(event['estado_anterior']);
+  final next = stateLabel(event['estado_nuevo']);
+
+  if (eventType == 'estado_actualizado' &&
+      previous.isNotEmpty &&
+      next.isNotEmpty) {
+    return context
+        .tr('event.status_changed')
+        .replaceAll('{previous}', previous)
+        .replaceAll('{next}', next);
+  }
+  if (eventType == 'postulacion_creada' && next.isNotEmpty) {
+    return context.tr('event.application_created').replaceAll('{state}', next);
+  }
+
+  return prettyEventText(context, event['descripcion']?.toString() ?? '');
 }
 
 String relativeDateT(BuildContext context, String? raw) {

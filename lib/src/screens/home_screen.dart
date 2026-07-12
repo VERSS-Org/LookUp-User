@@ -182,10 +182,7 @@ class _NotificationRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    prettyEventText(
-                      context,
-                      event['descripcion']?.toString() ?? '',
-                    ),
+                    eventDescriptionT(context, event),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
