@@ -254,7 +254,7 @@ class _Timeline extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        hito['descripcion']?.toString() ?? '—',
+                        eventDescriptionT(context, hito),
                         style: TextStyle(
                           color: c.ink,
                           height: 1.35,

@@ -8,7 +8,7 @@ import 'package:lookup_user/src/theme.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
 import 'package:lookup_user/src/widgets/common.dart';
 
-/// Metricas del postulante: contadores, tasa de exito y logros.
+/// Progreso del postulante: contadores, tasa de exito y logros.
 class MetricsScreen extends StatelessWidget {
   const MetricsScreen({super.key});
 

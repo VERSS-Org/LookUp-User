@@ -9,7 +9,7 @@ Aplicación Flutter para postulantes de LookUp.
 - Postulación a vacantes.
 - Historial de postulaciones con hitos, estados y feedback.
 - Mensajes con las empresas por postulación.
-- Métricas personales y logros.
+- Progreso personal y logros.
 - Perfil editable, foto de perfil y cambio de contraseña.
 
 El código está organizado en módulos bajo `lib/src/` (services, screens,
@@ -31,6 +31,14 @@ flutter run --dart-define=LOOKUP_API_BASE_URL=http://10.0.2.2:8000
 
 En un teléfono físico usa la IP LAN de la PC, por ejemplo `http://192.168.1.20:8000`.
 El valor puede incluir o no `/api`; la app lo normaliza internamente.
+
+El enlace al portal de empresas mostrado en el acceso usa
+`http://localhost:8085` durante el desarrollo. Para otro entorno, define su URL
+HTTP o HTTPS al ejecutar o compilar la aplicación:
+
+```bash
+flutter run --dart-define=LOOKUP_RECRUITER_PORTAL_URL=https://empresas.ejemplo.com
+```
 
 ## Verificación
 

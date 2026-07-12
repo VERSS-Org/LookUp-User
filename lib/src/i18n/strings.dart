@@ -34,7 +34,7 @@ const Map<String, String> stringsEs = {
   'nav.home': 'Inicio',
   'nav.offers': 'Vacantes',
   'nav.processes': 'Procesos',
-  'nav.metrics': 'Métricas',
+  'nav.metrics': 'Progreso',
   'nav.messages': 'Mensajes',
   'nav.profile': 'Perfil',
   'nav.my_profile': 'Mi perfil',
@@ -66,6 +66,10 @@ const Map<String, String> stringsEs = {
   'auth.password.lowercase': 'Incluye una letra minúscula.',
   'auth.password.number': 'Incluye un número.',
   'auth.password.symbol': 'Incluye un carácter especial.',
+  'auth.company.question': '¿Eres una empresa?',
+  'auth.company.action': 'Ir al portal de empresas',
+  'auth.company.unavailable':
+      'El portal de empresas no está configurado en este entorno.',
 
   // Recuperar contraseña
   'reset.title': 'Recuperar contraseña',
@@ -85,12 +89,12 @@ const Map<String, String> stringsEs = {
   'home.greeting': 'Hola,',
   'home.subtitle': 'Este es el estado de tu búsqueda laboral hoy.',
   'home.applications': 'Postulaciones',
-  'home.in_process': 'En proceso',
+  'home.in_process': 'Activas',
   'home.quick': 'Accesos rápidos',
   'home.progress': 'Ver mi avance',
   'home.progress.sub': 'Sigue el estado de tus procesos',
-  'home.metrics': 'Mis métricas',
-  'home.metrics.sub': 'Resultados y logros',
+  'home.metrics': 'Mi progreso',
+  'home.metrics.sub': 'Resultados e hitos',
   'home.news': 'Notificaciones recientes',
   'home.news.all': 'Ver todo',
 
@@ -149,10 +153,10 @@ const Map<String, String> stringsEs = {
   'chat.search.empty.msg': 'Prueba con otro nombre de empresa o vacante.',
   'chat.retry.msg': 'Vuelve a intentarlo para cargar tus conversaciones.',
 
-  // Métricas
-  'metrics.title': 'Métricas',
+  // Progreso
+  'metrics.title': 'Progreso',
   'metrics.header': 'Resumen de tu proceso',
-  'metrics.sub': 'Indicadores de tu actividad en la plataforma.',
+  'metrics.sub': 'Tu actividad y avances en la plataforma.',
   'metrics.applications': 'Postulaciones',
   'metrics.interviews': 'Entrevistas',
   'metrics.offers': 'Aceptados',
@@ -237,6 +241,8 @@ const Map<String, String> stringsEs = {
   'estado.rechazado': 'Rechazado',
   'estado.abierto': 'Abierta',
   'estado.cerrado': 'Cerrada',
+  'event.status_changed': 'Estado actualizado de {previous} a {next}',
+  'event.application_created': 'Postulación creada en estado {state}',
 
   // Contratos
   'contrato.tiempo_completo': 'Jornada Completa',
@@ -306,7 +312,7 @@ const Map<String, String> stringsEn = {
   'nav.home': 'Home',
   'nav.offers': 'Vacancies',
   'nav.processes': 'Processes',
-  'nav.metrics': 'Metrics',
+  'nav.metrics': 'Progress',
   'nav.messages': 'Messages',
   'nav.profile': 'Profile',
   'nav.my_profile': 'My profile',
@@ -337,6 +343,10 @@ const Map<String, String> stringsEn = {
   'auth.password.lowercase': 'Include a lowercase letter.',
   'auth.password.number': 'Include a number.',
   'auth.password.symbol': 'Include a special character.',
+  'auth.company.question': 'Are you a company?',
+  'auth.company.action': 'Go to the company portal',
+  'auth.company.unavailable':
+      'The company portal is not configured in this environment.',
 
   'reset.title': 'Reset password',
   'reset.subtitle':
@@ -354,12 +364,12 @@ const Map<String, String> stringsEn = {
   'home.greeting': 'Hi,',
   'home.subtitle': 'This is the state of your job search today.',
   'home.applications': 'Applications',
-  'home.in_process': 'In progress',
+  'home.in_process': 'Active',
   'home.quick': 'Quick actions',
   'home.progress': 'View my progress',
   'home.progress.sub': 'Track the status of your processes',
-  'home.metrics': 'My metrics',
-  'home.metrics.sub': 'Results and achievements',
+  'home.metrics': 'My progress',
+  'home.metrics.sub': 'Results and milestones',
   'home.news': 'Recent notifications',
   'home.news.all': 'See all',
 
@@ -413,9 +423,9 @@ const Map<String, String> stringsEn = {
   'chat.search.empty.msg': 'Try another company or vacancy.',
   'chat.retry.msg': 'Try again to load your conversations.',
 
-  'metrics.title': 'Metrics',
+  'metrics.title': 'Progress',
   'metrics.header': 'Your process at a glance',
-  'metrics.sub': 'Indicators of your activity on the platform.',
+  'metrics.sub': 'Your activity and progress on the platform.',
   'metrics.applications': 'Applications',
   'metrics.interviews': 'Interviews',
   'metrics.offers': 'Accepted',
@@ -494,6 +504,8 @@ const Map<String, String> stringsEn = {
   'estado.rechazado': 'Rejected',
   'estado.abierto': 'Open',
   'estado.cerrado': 'Closed',
+  'event.status_changed': 'Status updated from {previous} to {next}',
+  'event.application_created': 'Application created with status {state}',
 
   'contrato.tiempo_completo': 'Full-time',
   'contrato.medio_tiempo': 'Part-time',
