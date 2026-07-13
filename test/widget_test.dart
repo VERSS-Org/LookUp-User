@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lookup_user/main.dart';
+import 'package:lookup_user/src/screens/messages_screen.dart';
+import 'package:lookup_user/src/screens/profile_screen.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
 import 'package:lookup_user/src/widgets/common.dart';
 import 'package:provider/provider.dart';
@@ -8,10 +10,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _TestDataService extends LookUpDataService {
   @override
+  Future<void> fetchInbox({bool notify = true}) async {}
+
+  @override
   Future<void> fetchEvents({bool notify = true}) async {}
 
   @override
   Future<void> markNotificationsSeen() async {}
+}
+
+class _TestAuthService extends AuthService {
+  _TestAuthService(this.testProfile);
+
+  final Map<String, dynamic> testProfile;
+
+  @override
+  Map<String, dynamic>? get profile => testProfile;
+
+  @override
+  Future<bool> updateProfile(Map<String, dynamic> updates) async => true;
 }
 
 Widget _testShell() {
@@ -28,6 +45,22 @@ Widget _testShell() {
       theme: buildLookUpTheme(Brightness.light),
       home: const AppShell(),
     ),
+  );
+}
+
+Widget _testFeature({required Widget child, Map<String, dynamic>? profile}) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => ThemeController()),
+      ChangeNotifierProvider(create: (_) => LocaleController()),
+      ChangeNotifierProvider<AuthService>(
+        create: (_) => _TestAuthService(profile ?? const <String, dynamic>{}),
+      ),
+      ChangeNotifierProvider<LookUpDataService>(
+        create: (_) => _TestDataService(),
+      ),
+    ],
+    child: MaterialApp(theme: buildLookUpTheme(Brightness.light), home: child),
   );
 }
 
@@ -115,7 +148,7 @@ void main() {
     expect(find.text('Buscar vacantes o empresas'), findsOneWidget);
     expect(
       tester.getSize(find.byType(SearchBar)).width,
-      greaterThanOrEqualTo(400),
+      greaterThanOrEqualTo(470),
     );
     expect(find.text('LookUp'), findsNothing);
     expect(find.text('Progreso'), findsOneWidget);
@@ -135,6 +168,152 @@ void main() {
     expect(tester.getSize(popover).height, lessThan(600));
     expect(find.text('Hola, Postulante'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop navbar search stays wide without overflowing at 1024', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(1024, 768));
+
+    await tester.pumpWidget(_testShell());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SearchBar), findsOneWidget);
+    expect(tester.getSize(find.byType(SearchBar)).width, 280);
+    expect(tester.takeException(), isNull);
+
+    tester.view.physicalSize = const Size(960, 768);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byType(SearchBar)).width,
+      greaterThanOrEqualTo(200),
+    );
+    expect(
+      tester.getSize(find.byType(SearchBar)).width,
+      lessThanOrEqualTo(280),
+    );
+    expect(tester.takeException(), isNull);
+
+    tester.view.physicalSize = const Size(1180, 768);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(SearchBar)).width, 380);
+    expect(tester.takeException(), isNull);
+
+    tester.view.physicalSize = const Size(1600, 900);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(SearchBar)).width, 540);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'desktop profile aligns personal values and removes duplicate header',
+    (tester) async {
+      _setViewport(tester, const Size(1200, 900));
+
+      await tester.pumpWidget(
+        _testFeature(
+          child: const ProfileScreen(embedded: true),
+          profile: const {
+            'nombre_completo': 'Luis Rodriguez',
+            'email': 'luis@example.com',
+            'carrera': '   Ingeniería de software   ',
+            'telefono': ' 999 888 777 ',
+            'ciudad': ' Lima ',
+            'perfil': <String, dynamic>{},
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mi perfil'), findsNothing);
+      expect(find.byKey(const Key('profile-change-photo')), findsOneWidget);
+      expect(find.byKey(const Key('profile-edit-general')), findsOneWidget);
+      expect(find.byTooltip('Editar perfil'), findsOneWidget);
+      expect(find.text('Editar'), findsOneWidget);
+      expect(find.text('   Ingeniería de software   '), findsNothing);
+      expect(find.text('Ingeniería de software'), findsOneWidget);
+      expect(find.text('999 888 777'), findsOneWidget);
+      expect(find.text('Lima'), findsOneWidget);
+
+      final careerX = tester.getTopLeft(find.text('Ingeniería de software')).dx;
+      final phoneX = tester.getTopLeft(find.text('999 888 777')).dx;
+      final cityX = tester.getTopLeft(find.text('Lima')).dx;
+      final careerLabelRight = tester
+          .getTopRight(find.text('Carrera o especialidad'))
+          .dx;
+      expect((careerX - phoneX).abs(), lessThan(1));
+      expect((careerX - cityX).abs(), lessThan(1));
+      expect(careerX - careerLabelRight, lessThan(100));
+
+      await tester.tap(find.text('Editar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Sobre mí'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('profile-edit-general')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Editar perfil'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('mobile profile keeps edit actions beside the photo action', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(360, 800));
+
+    await tester.pumpWidget(_testFeature(child: const ProfileScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mi perfil'), findsOneWidget);
+    expect(find.byKey(const Key('profile-change-photo')), findsOneWidget);
+    expect(find.byKey(const Key('profile-edit-general')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop messages omits the redundant inner title', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1200, 800));
+
+    await tester.pumpWidget(
+      _testFeature(child: const MessagesScreen(embedded: true)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mensajes'), findsNothing);
+    expect(find.byKey(const Key('messages-list-panel')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('messages-list-panel'))).width,
+      360,
+    );
+    expect(find.text('Buscar conversaciones'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('theme uses Helvetica fallbacks and uniform page transitions', () {
+    final theme = buildLookUpTheme(Brightness.light);
+
+    expect(theme.textTheme.bodyMedium?.fontFamily, kLookUpFontFamily);
+    expect(theme.textTheme.bodyMedium?.fontFamilyFallback, contains('Arial'));
+    expect(
+      theme.pageTransitionsTheme.builders.values,
+      everyElement(isA<LookUpPageTransitionsBuilder>()),
+    );
   });
 
   testWidgets('structured process events never expose technical states', (

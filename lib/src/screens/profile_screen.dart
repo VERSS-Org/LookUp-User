@@ -26,6 +26,21 @@ class ProfileScreen extends StatelessWidget {
     return <String, dynamic>{};
   }
 
+  String _valorPerfil(Object? raw, String fallback) {
+    final value = raw?.toString().trim() ?? '';
+    return value.isEmpty ? fallback : value;
+  }
+
+  void _editarDatosGenerales(
+    BuildContext context,
+    Map<String, dynamic> profile,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => EditProfileDialog(profile: profile),
+    );
+  }
+
   Future<void> _guardarPerfil(
     BuildContext context,
     Map<String, dynamic> perfil,
@@ -52,25 +67,14 @@ class ProfileScreen extends StatelessWidget {
     final c = context.colors;
     final profile = auth.profile ?? const <String, dynamic>{};
     final perfil = _perfilDe(profile);
-    final nombre =
-        profile['nombre_completo']?.toString() ?? context.t('common.applicant');
+    final nombre = _valorPerfil(
+      profile['nombre_completo'],
+      context.t('common.applicant'),
+    );
     final descripcion = perfil['descripcion']?.toString() ?? '';
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: !embedded,
-        title: Text(context.t('profile.title')),
-        actions: [
-          IconButton(
-            tooltip: context.t('profile.edit'),
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => EditProfileDialog(profile: profile),
-            ),
-          ),
-        ],
-      ),
+      appBar: embedded ? null : AppBar(title: Text(context.t('profile.title'))),
       body: PageContainer(
         maxWidth: 820,
         child: ListView(
@@ -85,30 +89,50 @@ class ProfileScreen extends StatelessWidget {
               ),
               title: nombre,
               subtitle: [
-                if ((profile['carrera']?.toString() ?? '').isNotEmpty)
-                  profile['carrera'].toString(),
-                if ((profile['ciudad']?.toString() ?? '').isNotEmpty)
-                  profile['ciudad'].toString(),
+                if ((profile['carrera']?.toString().trim() ?? '').isNotEmpty)
+                  profile['carrera'].toString().trim(),
+                if ((profile['ciudad']?.toString().trim() ?? '').isNotEmpty)
+                  profile['ciudad'].toString().trim(),
               ].join(' · '),
-              caption: profile['email']?.toString() ?? '',
-              action: OutlinedButton.icon(
-                icon: const Icon(Icons.photo_camera_outlined, size: 17),
-                label: Text(context.t('profile.change_photo')),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (_) => const PhotoUploadDialog(),
-                ),
+              caption: profile['email']?.toString().trim() ?? '',
+              action: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    key: const Key('profile-change-photo'),
+                    icon: const Icon(Icons.photo_camera_outlined, size: 17),
+                    label: Text(context.t('profile.change_photo')),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const PhotoUploadDialog(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    key: const Key('profile-edit-general'),
+                    tooltip: context.t('profile.edit'),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(36, 36),
+                      fixedSize: const Size(36, 36),
+                      padding: const EdgeInsets.all(8),
+                      side: BorderSide(color: c.border),
+                    ),
+                    onPressed: () => _editarDatosGenerales(context, profile),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 18),
             // Sobre mí
             SectionHeader(
               title: context.t('profile.about'),
-              actionLabel: context.t('profile.edit'),
+              actionLabel: context.t('common.edit'),
               onAction: () => _editarDescripcion(context, perfil, descripcion),
             ),
             Text(
@@ -128,23 +152,26 @@ class ProfileScreen extends StatelessWidget {
             InfoRow(
               icon: Icons.school_outlined,
               label: context.t('auth.career'),
-              value:
-                  profile['carrera']?.toString() ??
-                  context.t('common.not_specified_f'),
+              value: _valorPerfil(
+                profile['carrera'],
+                context.t('common.not_specified_f'),
+              ),
             ),
             InfoRow(
               icon: Icons.phone_outlined,
               label: context.t('auth.phone'),
-              value:
-                  profile['telefono']?.toString() ??
-                  context.t('common.not_specified'),
+              value: _valorPerfil(
+                profile['telefono'],
+                context.t('common.not_specified'),
+              ),
             ),
             InfoRow(
               icon: Icons.location_on_outlined,
               label: context.t('auth.city'),
-              value:
-                  profile['ciudad']?.toString() ??
-                  context.t('common.not_specified_f'),
+              value: _valorPerfil(
+                profile['ciudad'],
+                context.t('common.not_specified_f'),
+              ),
             ),
             const SizedBox(height: 10),
             // Secciones profesionales
