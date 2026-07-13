@@ -32,9 +32,10 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  // 0..3: pestañas · 4: mensajes · 6: perfil
+  // 0..3: secciones principales · 4: mensajes · 6: perfil · 7: búsqueda móvil
   int _index = 0;
   int _primaryIndex = 0;
+  String? _requestedConversationId;
   final SearchController _searchController = SearchController();
   GlobalKey<NavigatorState> _contentNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -48,7 +49,7 @@ class _AppShellState extends State<AppShell> {
     final changed = _index != index;
     setState(() {
       _index = index;
-      if (index >= 0 && index <= 3) {
+      if ((index >= 0 && index <= 3) || index == 7) {
         _primaryIndex = index;
       }
       if (changed) {
@@ -127,6 +128,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _openMessages() {
+    _requestedConversationId = null;
     final isWide = MediaQuery.sizeOf(context).width >= 960;
     if (isWide) {
       _select(4);
@@ -136,6 +138,21 @@ class _AppShellState extends State<AppShell> {
         MaterialPageRoute(builder: (_) => const MessagesScreen()),
       );
     }
+  }
+
+  void _openConversation(String postulacionId) {
+    _requestedConversationId = postulacionId;
+    final isWide = MediaQuery.sizeOf(context).width >= 960;
+    if (isWide) {
+      _select(4);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MessagesScreen(initialPostulacionId: postulacionId),
+      ),
+    );
   }
 
   void _openNotifications() {
@@ -184,18 +201,26 @@ class _AppShellState extends State<AppShell> {
     switch (index) {
       case 0:
         return HomeScreen(
-          onOpenTab: _select,
           onOpenMessages: _openMessages,
           onOpenNotifications: _openNotifications,
         );
       case 1:
         return OffersScreen(onClearSearch: _clearSearch);
       case 2:
-        return const ApplicationsScreen();
+        return ApplicationsScreen(onOpenConversation: _openConversation);
       case 3:
         return const MetricsScreen();
       case 4:
-        return const MessagesScreen(embedded: true);
+        return MessagesScreen(
+          key: ValueKey(_requestedConversationId),
+          embedded: true,
+          initialPostulacionId: _requestedConversationId,
+        );
+      case 7:
+        return OffersScreen(
+          mobileSearchMode: true,
+          onClearSearch: _clearSearch,
+        );
       default:
         return const ProfileScreen(embedded: true);
     }
@@ -227,6 +252,7 @@ class _AppShellState extends State<AppShell> {
       ),
     ];
     final isWide = MediaQuery.sizeOf(context).width >= 960;
+    final effectiveWideIndex = _index == 7 ? 1 : _index;
     final c = context.colors;
 
     if (isWide) {
@@ -234,7 +260,7 @@ class _AppShellState extends State<AppShell> {
         body: Column(
           children: [
             _TopNavBar(
-              index: _index,
+              index: effectiveWideIndex,
               destinations: destinations,
               unread: data.unreadMessages,
               processAlerts: data.processAlerts,
@@ -254,12 +280,12 @@ class _AppShellState extends State<AppShell> {
             // navbar, en lugar de tapar toda la pantalla.
             Expanded(
               child: _SectionSwitcher(
-                transitionKey: _index,
+                transitionKey: effectiveWideIndex,
                 child: Navigator(
                   key: _contentNavigatorKey,
                   onGenerateRoute: (settings) => MaterialPageRoute(
                     settings: settings,
-                    builder: (_) => _pageFor(_index),
+                    builder: (_) => _pageFor(effectiveWideIndex),
                   ),
                 ),
               ),
@@ -282,15 +308,6 @@ class _AppShellState extends State<AppShell> {
         ),
         title: const BrandMark(size: 32),
         actions: [
-          _GlobalSearch(
-            compact: true,
-            controller: _searchController,
-            onChanged: _setSearchQuery,
-            onSubmitted: _showSearchResults,
-            onClear: _clearSearch,
-            onOpenJob: _openJobFromSearch,
-            onOpenCompany: _openCompanyFromSearch,
-          ),
           BadgedIconButton(
             icon: Icons.notifications_outlined,
             count: data.unseenNotifications,
@@ -323,32 +340,71 @@ class _AppShellState extends State<AppShell> {
       ),
       endDrawer: const ProfileDrawer(),
       body: _SectionSwitcher(
-        transitionKey: _index <= 3 ? _index : _primaryIndex,
-        child: _pageFor(_index <= 3 ? _index : _primaryIndex),
+        transitionKey: _isPrimarySection(_index) ? _index : _primaryIndex,
+        child: _pageFor(_isPrimarySection(_index) ? _index : _primaryIndex),
       ),
       bottomNavigationBar: Container(
+        key: const Key('mobile-bottom-navigation'),
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: c.border)),
         ),
         child: NavigationBar(
-          selectedIndex: _index <= 3 ? _index : _primaryIndex,
-          onDestinationSelected: _select,
+          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+          selectedIndex: _mobileDestinationIndex(
+            _isPrimarySection(_index) ? _index : _primaryIndex,
+          ),
+          onDestinationSelected: (index) {
+            _select(const <int>[0, 7, 1, 2, 3][index]);
+          },
           destinations: [
-            for (var i = 0; i < destinations.length; i++)
-              NavigationDestination(
-                icon: i == 2 && data.processAlerts > 0
-                    ? Badge.count(
-                        count: data.processAlerts,
-                        child: Icon(destinations[i].icon),
-                      )
-                    : Icon(destinations[i].icon),
-                selectedIcon: Icon(destinations[i].selected),
-                label: destinations[i].label,
-              ),
+            NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home),
+              label: context.t('nav.home'),
+            ),
+            NavigationDestination(
+              key: const Key('mobile-search-destination'),
+              icon: const Icon(Icons.search),
+              selectedIcon: const Icon(Icons.manage_search),
+              label: context.t('nav.search'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.work_outline),
+              selectedIcon: const Icon(Icons.work),
+              label: context.t('nav.offers'),
+            ),
+            NavigationDestination(
+              icon: data.processAlerts > 0
+                  ? Badge.count(
+                      count: data.processAlerts,
+                      child: const Icon(Icons.fact_check_outlined),
+                    )
+                  : const Icon(Icons.fact_check_outlined),
+              selectedIcon: const Icon(Icons.fact_check),
+              label: context.t('nav.processes'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.insights_outlined),
+              selectedIcon: const Icon(Icons.insights),
+              label: context.t('nav.metrics'),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  bool _isPrimarySection(int index) => (index >= 0 && index <= 3) || index == 7;
+
+  int _mobileDestinationIndex(int sectionIndex) {
+    return switch (sectionIndex) {
+      0 => 0,
+      7 => 1,
+      1 => 2,
+      2 => 3,
+      3 => 4,
+      _ => 0,
+    };
   }
 }
 
@@ -549,7 +605,6 @@ class _GlobalSearch extends StatefulWidget {
     required this.onClear,
     required this.onOpenJob,
     required this.onOpenCompany,
-    this.compact = false,
   });
 
   final SearchController controller;
@@ -558,7 +613,6 @@ class _GlobalSearch extends StatefulWidget {
   final VoidCallback onClear;
   final ValueChanged<Map<String, dynamic>> onOpenJob;
   final ValueChanged<Map<String, dynamic>> onOpenCompany;
-  final bool compact;
 
   @override
   State<_GlobalSearch> createState() => _GlobalSearchState();
@@ -692,7 +746,7 @@ class _GlobalSearchState extends State<_GlobalSearch> {
 
     return SearchAnchor(
       searchController: widget.controller,
-      isFullScreen: widget.compact,
+      isFullScreen: false,
       viewHintText: hint,
       viewBackgroundColor: c.surface,
       viewSurfaceTintColor: Colors.transparent,
@@ -701,9 +755,11 @@ class _GlobalSearchState extends State<_GlobalSearch> {
       viewShape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
-      viewConstraints: widget.compact
-          ? null
-          : const BoxConstraints(minWidth: 420, maxWidth: 520, maxHeight: 580),
+      viewConstraints: const BoxConstraints(
+        minWidth: 420,
+        maxWidth: 520,
+        maxHeight: 580,
+      ),
       dividerColor: c.border,
       viewOnChanged: widget.onChanged,
       viewOnSubmitted: widget.onSubmitted,
@@ -719,13 +775,6 @@ class _GlobalSearchState extends State<_GlobalSearch> {
       ],
       suggestionsBuilder: _suggestions,
       builder: (context, controller) {
-        if (widget.compact) {
-          return IconButton(
-            tooltip: hint,
-            icon: const Icon(Icons.search),
-            onPressed: controller.openView,
-          );
-        }
         return SearchBar(
           controller: controller,
           hintText: hint,

@@ -11,7 +11,11 @@ import 'package:lookup_user/src/widgets/common.dart';
 
 /// Procesos del postulante: cada postulación con su avance y acceso al chat.
 class ApplicationsScreen extends StatelessWidget {
-  const ApplicationsScreen({super.key});
+  const ApplicationsScreen({super.key, this.onOpenConversation});
+
+  /// Permite que el shell cambie a Mensajes sin abrir una segunda vista de
+  /// chat desconectada de la navegacion principal.
+  final ValueChanged<String>? onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,10 @@ class ApplicationsScreen extends StatelessWidget {
               )
             else
               ...data.applications.map(
-                (application) => _ApplicationBlock(application: application),
+                (application) => _ApplicationBlock(
+                  application: application,
+                  onOpenConversation: onOpenConversation,
+                ),
               ),
           ],
         ),
@@ -53,9 +60,10 @@ class ApplicationsScreen extends StatelessWidget {
 }
 
 class _ApplicationBlock extends StatelessWidget {
-  const _ApplicationBlock({required this.application});
+  const _ApplicationBlock({required this.application, this.onOpenConversation});
 
   final Map<String, dynamic> application;
+  final ValueChanged<String>? onOpenConversation;
 
   Future<void> _confirmarRetiro(
     BuildContext context,
@@ -167,13 +175,18 @@ class _ApplicationBlock extends StatelessWidget {
             children: [
               if (tieneChat)
                 TextButton.icon(
+                  key: Key('application-open-chat-$postulacionId'),
                   onPressed: () {
-                    final hilo = data.inbox.firstWhere(
-                      (h) => h['postulacion_id']?.toString() == postulacionId,
-                    );
+                    if (onOpenConversation != null) {
+                      onOpenConversation!(postulacionId);
+                      return;
+                    }
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => ChatScreen(hilo: hilo)),
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            MessagesScreen(initialPostulacionId: postulacionId),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.chat_outlined, size: 17),

@@ -12,12 +12,10 @@ import 'package:lookup_user/src/widgets/common.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    required this.onOpenTab,
     required this.onOpenMessages,
     required this.onOpenNotifications,
   });
 
-  final ValueChanged<int> onOpenTab;
   final VoidCallback onOpenMessages;
   final VoidCallback onOpenNotifications;
 
@@ -92,21 +90,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 26),
-            SectionHeader(title: context.t('home.quick')),
-            _QuickRow(
-              icon: Icons.timeline_outlined,
-              title: context.t('home.progress'),
-              subtitle: context.t('home.progress.sub'),
-              onTap: () => onOpenTab(2),
-              badge: data.processAlerts,
-            ),
-            _QuickRow(
-              icon: Icons.insights_outlined,
-              title: context.t('home.metrics'),
-              subtitle: context.t('home.metrics.sub'),
-              onTap: () => onOpenTab(3),
             ),
             if (data.events.isNotEmpty) ...[
               const SizedBox(height: 26),
@@ -247,71 +230,6 @@ class _InlineStat extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: content,
-    );
-  }
-}
-
-class _QuickRow extends StatelessWidget {
-  const _QuickRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.badge = 0,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: c.border)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: c.brand),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: c.ink,
-                          fontSize: 15,
-                        ),
-                      ),
-                      if (badge > 0) ...[
-                        const SizedBox(width: 8),
-                        Badge.count(count: badge),
-                      ],
-                    ],
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: c.inkMuted, fontSize: 12.5),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 20, color: c.inkFaint),
-          ],
-        ),
-      ),
     );
   }
 }

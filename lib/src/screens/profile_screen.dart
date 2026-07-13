@@ -75,283 +75,377 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: embedded ? null : AppBar(title: Text(context.t('profile.title'))),
-      body: PageContainer(
-        maxWidth: 820,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
-          children: [
-            // Cabecera estilo perfil profesional: banner + avatar superpuesto
-            ProfileBanner(
-              avatar: ProfileAvatar(
-                fotoUrl: profile['foto_url']?.toString(),
-                radius: 44,
-                name: nombre,
-              ),
-              title: nombre,
-              subtitle: [
-                if ((profile['carrera']?.toString().trim() ?? '').isNotEmpty)
-                  profile['carrera'].toString().trim(),
-                if ((profile['ciudad']?.toString().trim() ?? '').isNotEmpty)
-                  profile['ciudad'].toString().trim(),
-              ].join(' · '),
-              caption: profile['email']?.toString().trim() ?? '',
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton.icon(
-                    key: const Key('profile-change-photo'),
-                    icon: const Icon(Icons.photo_camera_outlined, size: 17),
-                    label: Text(context.t('profile.change_photo')),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    onPressed: () => showDialog(
-                      context: context,
-                      builder: (_) => const PhotoUploadDialog(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.outlined(
-                    key: const Key('profile-edit-general'),
-                    tooltip: context.t('profile.edit'),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(36, 36),
-                      fixedSize: const Size(36, 36),
-                      padding: const EdgeInsets.all(8),
-                      side: BorderSide(color: c.border),
-                    ),
-                    onPressed: () => _editarDatosGenerales(context, profile),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            // Sobre mí
-            SectionHeader(
-              title: context.t('profile.about'),
-              actionLabel: context.t('common.edit'),
-              onAction: () => _editarDescripcion(context, perfil, descripcion),
-            ),
-            Text(
-              descripcion.isEmpty
-                  ? context.t('profile.about.hint')
-                  : descripcion,
-              style: TextStyle(
-                color: descripcion.isEmpty ? c.inkFaint : c.ink,
-                height: 1.5,
-                fontSize: 14.5,
-                fontStyle: descripcion.isEmpty ? FontStyle.italic : null,
-              ),
-            ),
-            const SizedBox(height: 22),
-            // Datos personales
-            SectionHeader(title: context.t('profile.personal')),
-            InfoRow(
-              icon: Icons.school_outlined,
-              label: context.t('auth.career'),
-              value: _valorPerfil(
-                profile['carrera'],
-                context.t('common.not_specified_f'),
-              ),
-            ),
-            InfoRow(
-              icon: Icons.phone_outlined,
-              label: context.t('auth.phone'),
-              value: _valorPerfil(
-                profile['telefono'],
-                context.t('common.not_specified'),
-              ),
-            ),
-            InfoRow(
-              icon: Icons.location_on_outlined,
-              label: context.t('auth.city'),
-              value: _valorPerfil(
-                profile['ciudad'],
-                context.t('common.not_specified_f'),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Secciones profesionales
-            _EntryListSection(
-              title: context.t('profile.experience'),
-              icon: Icons.work_outline,
-              entries: asMapList(perfil['experiencia']),
-              titleKey: 'puesto',
-              subtitleKeys: const ['organizacion', 'periodo'],
-              bodyKey: 'descripcion',
-              onAdd: () => _agregarEntrada(context, perfil, 'experiencia', [
-                ('puesto', context.tr('profile.position'), true),
-                ('organizacion', context.tr('profile.organization'), true),
-                ('periodo', context.tr('profile.period'), false),
-                ('descripcion', context.tr('profile.description'), false),
-              ], context.tr('profile.add_experience')),
-              onDelete: (index) =>
-                  _eliminarEntrada(context, perfil, 'experiencia', index),
-            ),
-            _EntryListSection(
-              title: context.t('profile.education'),
-              icon: Icons.school_outlined,
-              entries: asMapList(perfil['educacion']),
-              titleKey: 'titulo',
-              subtitleKeys: const ['institucion', 'periodo'],
-              onAdd: () => _agregarEntrada(context, perfil, 'educacion', [
-                ('titulo', context.tr('profile.degree'), true),
-                ('institucion', context.tr('profile.institution'), true),
-                ('periodo', context.tr('profile.period'), false),
-              ], context.tr('profile.add_education')),
-              onDelete: (index) =>
-                  _eliminarEntrada(context, perfil, 'educacion', index),
-            ),
-            _EntryListSection(
-              title: context.t('profile.certificates'),
-              icon: Icons.verified_outlined,
-              entries: asMapList(perfil['certificados']),
-              titleKey: 'nombre',
-              subtitleKeys: const ['anio'],
-              onAdd: () => _agregarEntrada(
-                context,
-                perfil,
-                'certificados',
-                [
-                  ('nombre', context.tr('profile.cert_name'), true),
-                  ('anio', context.tr('profile.year'), false),
-                ],
-                context.tr('profile.add_certificate'),
-              ),
-              onDelete: (index) =>
-                  _eliminarEntrada(context, perfil, 'certificados', index),
-            ),
-            // Habilidades (chips)
-            SectionHeader(
-              title: context.t('profile.skills'),
-              actionLabel: context.t('common.add'),
-              onAction: () => _agregarHabilidad(context, perfil),
-            ),
-            if ((perfil['habilidades'] as List?)?.isEmpty ?? true)
-              Text(
-                context.t('profile.empty_section'),
-                style: TextStyle(
-                  color: c.inkFaint,
-                  fontSize: 13.5,
-                  fontStyle: FontStyle.italic,
-                ),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (
-                    var i = 0;
-                    i < (perfil['habilidades'] as List).length;
-                    i++
-                  )
-                    Chip(
-                      label: Text(
-                        (perfil['habilidades'] as List)[i].toString(),
+      // El scroll ocupa el viewport completo: en web la barra queda en el
+      // borde derecho de la ventana, aunque el contenido siga centrado.
+      body: ListView(
+        key: const Key('profile-page-scroll'),
+        padding: const EdgeInsets.fromLTRB(0, 16, 0, 32),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Cabecera estilo perfil profesional: banner + avatar superpuesto
+                    ProfileBanner(
+                      avatar: ProfileAvatar(
+                        fotoUrl: profile['foto_url']?.toString(),
+                        radius: 44,
+                        name: nombre,
                       ),
-                      onDeleted: () {
-                        final lista = List<dynamic>.from(
-                          perfil['habilidades'] as List,
-                        )..removeAt(i);
-                        _guardarPerfil(context, {
-                          ...perfil,
-                          'habilidades': lista,
-                        });
-                      },
+                      title: nombre,
+                      subtitle: [
+                        if ((profile['carrera']?.toString().trim() ?? '')
+                            .isNotEmpty)
+                          profile['carrera'].toString().trim(),
+                        if ((profile['ciudad']?.toString().trim() ?? '')
+                            .isNotEmpty)
+                          profile['ciudad'].toString().trim(),
+                      ].join(' · '),
+                      caption: profile['email']?.toString().trim() ?? '',
+                      action: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            key: const Key('profile-change-photo'),
+                            icon: const Icon(
+                              Icons.photo_camera_outlined,
+                              size: 17,
+                            ),
+                            label: Text(context.t('profile.change_photo')),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 36),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                            ),
+                            onPressed: () => showDialog(
+                              context: context,
+                              builder: (_) => const PhotoUploadDialog(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.outlined(
+                            key: const Key('profile-edit-general'),
+                            tooltip: context.t('profile.edit'),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size(36, 36),
+                              fixedSize: const Size(36, 36),
+                              padding: const EdgeInsets.all(8),
+                              side: BorderSide(color: c.border),
+                            ),
+                            onPressed: () =>
+                                _editarDatosGenerales(context, profile),
+                          ),
+                        ],
+                      ),
                     ),
-                ],
+                    const SizedBox(height: 18),
+                    // Sobre mí
+                    SectionHeader(
+                      title: context.t('profile.about'),
+                      actionLabel: context.t('common.edit'),
+                      onAction: () =>
+                          _editarDescripcion(context, perfil, descripcion),
+                    ),
+                    Text(
+                      descripcion.isEmpty
+                          ? context.t('profile.about.hint')
+                          : descripcion,
+                      style: TextStyle(
+                        color: descripcion.isEmpty ? c.inkFaint : c.ink,
+                        height: 1.5,
+                        fontSize: 14.5,
+                        fontStyle: descripcion.isEmpty
+                            ? FontStyle.italic
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    // Datos personales
+                    SectionHeader(title: context.t('profile.personal')),
+                    InfoRow(
+                      icon: Icons.school_outlined,
+                      label: context.t('auth.career'),
+                      value: _valorPerfil(
+                        profile['carrera'],
+                        context.t('common.not_specified_f'),
+                      ),
+                    ),
+                    InfoRow(
+                      icon: Icons.phone_outlined,
+                      label: context.t('auth.phone'),
+                      value: _valorPerfil(
+                        profile['telefono'],
+                        context.t('common.not_specified'),
+                      ),
+                    ),
+                    InfoRow(
+                      icon: Icons.location_on_outlined,
+                      label: context.t('auth.city'),
+                      value: _valorPerfil(
+                        profile['ciudad'],
+                        context.t('common.not_specified_f'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Secciones profesionales
+                    _EntryListSection(
+                      title: context.t('profile.experience'),
+                      icon: Icons.work_outline,
+                      entries: asMapList(perfil['experiencia']),
+                      titleKey: 'puesto',
+                      subtitleKeys: const ['organizacion', 'periodo'],
+                      bodyKey: 'descripcion',
+                      onAdd: () => _agregarEntrada(
+                        context,
+                        perfil,
+                        'experiencia',
+                        [
+                          ('puesto', context.tr('profile.position'), true),
+                          (
+                            'organizacion',
+                            context.tr('profile.organization'),
+                            true,
+                          ),
+                          ('periodo', context.tr('profile.period'), false),
+                          (
+                            'descripcion',
+                            context.tr('profile.description'),
+                            false,
+                          ),
+                        ],
+                        context.tr('profile.add_experience'),
+                      ),
+                      onDelete: (index) => _eliminarEntrada(
+                        context,
+                        perfil,
+                        'experiencia',
+                        index,
+                      ),
+                    ),
+                    _EntryListSection(
+                      title: context.t('profile.education'),
+                      icon: Icons.school_outlined,
+                      entries: asMapList(perfil['educacion']),
+                      titleKey: 'titulo',
+                      subtitleKeys: const ['institucion', 'periodo'],
+                      onAdd: () => _agregarEntrada(
+                        context,
+                        perfil,
+                        'educacion',
+                        [
+                          ('titulo', context.tr('profile.degree'), true),
+                          (
+                            'institucion',
+                            context.tr('profile.institution'),
+                            true,
+                          ),
+                          ('periodo', context.tr('profile.period'), false),
+                        ],
+                        context.tr('profile.add_education'),
+                      ),
+                      onDelete: (index) =>
+                          _eliminarEntrada(context, perfil, 'educacion', index),
+                    ),
+                    _EntryListSection(
+                      title: context.t('profile.certificates'),
+                      icon: Icons.verified_outlined,
+                      entries: asMapList(perfil['certificados']),
+                      titleKey: 'nombre',
+                      subtitleKeys: const ['anio'],
+                      onAdd: () => _agregarEntrada(
+                        context,
+                        perfil,
+                        'certificados',
+                        [
+                          ('nombre', context.tr('profile.cert_name'), true),
+                          ('anio', context.tr('profile.year'), false),
+                        ],
+                        context.tr('profile.add_certificate'),
+                      ),
+                      onDelete: (index) => _eliminarEntrada(
+                        context,
+                        perfil,
+                        'certificados',
+                        index,
+                      ),
+                    ),
+                    // Habilidades (chips)
+                    SectionHeader(
+                      title: context.t('profile.skills'),
+                      actionLabel: context.t('common.add'),
+                      onAction: () => _agregarHabilidad(context, perfil),
+                    ),
+                    if ((perfil['habilidades'] as List?)?.isEmpty ?? true)
+                      Text(
+                        context.t('profile.empty_section'),
+                        style: TextStyle(
+                          color: c.inkFaint,
+                          fontSize: 13.5,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (
+                            var i = 0;
+                            i < (perfil['habilidades'] as List).length;
+                            i++
+                          )
+                            Chip(
+                              label: Text(
+                                (perfil['habilidades'] as List)[i].toString(),
+                              ),
+                              onDeleted: () {
+                                final lista = List<dynamic>.from(
+                                  perfil['habilidades'] as List,
+                                )..removeAt(i);
+                                _guardarPerfil(context, {
+                                  ...perfil,
+                                  'habilidades': lista,
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    const SizedBox(height: 20),
+                    _EntryListSection(
+                      title: context.t('profile.languages'),
+                      icon: Icons.translate_outlined,
+                      entries: asMapList(perfil['idiomas']),
+                      titleKey: 'idioma',
+                      subtitleKeys: const ['nivel'],
+                      onAdd: () => _agregarEntrada(
+                        context,
+                        perfil,
+                        'idiomas',
+                        [
+                          ('idioma', context.tr('profile.language'), true),
+                          ('nivel', context.tr('profile.level'), false),
+                        ],
+                        context.tr('profile.add_language'),
+                      ),
+                      onDelete: (index) =>
+                          _eliminarEntrada(context, perfil, 'idiomas', index),
+                    ),
+                    _EntryListSection(
+                      title: context.t('profile.extras'),
+                      subtitle: context.t('profile.extras.hint'),
+                      icon: Icons.star_outline,
+                      entries: asMapList(perfil['extras']),
+                      titleKey: 'titulo',
+                      subtitleKeys: const [],
+                      bodyKey: 'descripcion',
+                      onAdd: () => _agregarEntrada(context, perfil, 'extras', [
+                        ('titulo', context.tr('profile.extra_title'), true),
+                        (
+                          'descripcion',
+                          context.tr('profile.description'),
+                          false,
+                        ),
+                      ], context.tr('profile.add_extra')),
+                      onDelete: (index) =>
+                          _eliminarEntrada(context, perfil, 'extras', index),
+                    ),
+                    const SizedBox(height: 10),
+                    // Privacidad
+                    SectionHeader(title: context.t('settings.privacy')),
+                    SwitchListTile.adaptive(
+                      key: const Key('profile-show-email-switch'),
+                      contentPadding: EdgeInsets.zero,
+                      secondary: Icon(Icons.email_outlined, color: c.inkFaint),
+                      title: Text(
+                        context.t('settings.privacy.email.title'),
+                        style: TextStyle(
+                          color: c.ink,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: Text(
+                        context.t('settings.privacy.email.subtitle'),
+                        style: TextStyle(color: c.inkMuted, fontSize: 12.5),
+                      ),
+                      value: perfil['mostrar_email'] != false,
+                      onChanged: (value) => _guardarPerfil(context, {
+                        ...perfil,
+                        'mostrar_email': value,
+                      }),
+                    ),
+                    const SizedBox(height: 18),
+                    // Configuración
+                    SectionHeader(title: context.t('settings.title')),
+                    Text(
+                      context.t('settings.theme'),
+                      style: TextStyle(fontSize: 13.5, color: c.inkMuted),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<ThemeMode>(
+                      segments: [
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          label: Text(context.t('settings.theme.light')),
+                          icon: const Icon(Icons.light_mode_outlined, size: 17),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          label: Text(context.t('settings.theme.dark')),
+                          icon: const Icon(Icons.dark_mode_outlined, size: 17),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          label: Text(context.t('settings.theme.system')),
+                          icon: const Icon(
+                            Icons.brightness_auto_outlined,
+                            size: 17,
+                          ),
+                        ),
+                      ],
+                      selected: {themeController.mode},
+                      onSelectionChanged: (selection) =>
+                          themeController.setMode(selection.first),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.t('settings.language'),
+                      style: TextStyle(fontSize: 13.5, color: c.inkMuted),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'es', label: Text('Español')),
+                        ButtonSegment(value: 'en', label: Text('English')),
+                      ],
+                      selected: {localeController.language},
+                      onSelectionChanged: (selection) =>
+                          localeController.setLanguage(selection.first),
+                    ),
+                    const SizedBox(height: 24),
+                    // Seguridad
+                    SectionHeader(title: context.t('settings.security')),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.lock_outline),
+                      label: Text(context.t('settings.change_password')),
+                      onPressed: () => showDialog(
+                        context: context,
+                        builder: (_) => const ChangePasswordDialog(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            const SizedBox(height: 20),
-            _EntryListSection(
-              title: context.t('profile.languages'),
-              icon: Icons.translate_outlined,
-              entries: asMapList(perfil['idiomas']),
-              titleKey: 'idioma',
-              subtitleKeys: const ['nivel'],
-              onAdd: () => _agregarEntrada(context, perfil, 'idiomas', [
-                ('idioma', context.tr('profile.language'), true),
-                ('nivel', context.tr('profile.level'), false),
-              ], context.tr('profile.add_language')),
-              onDelete: (index) =>
-                  _eliminarEntrada(context, perfil, 'idiomas', index),
             ),
-            _EntryListSection(
-              title: context.t('profile.extras'),
-              subtitle: context.t('profile.extras.hint'),
-              icon: Icons.star_outline,
-              entries: asMapList(perfil['extras']),
-              titleKey: 'titulo',
-              subtitleKeys: const [],
-              bodyKey: 'descripcion',
-              onAdd: () => _agregarEntrada(context, perfil, 'extras', [
-                ('titulo', context.tr('profile.extra_title'), true),
-                ('descripcion', context.tr('profile.description'), false),
-              ], context.tr('profile.add_extra')),
-              onDelete: (index) =>
-                  _eliminarEntrada(context, perfil, 'extras', index),
-            ),
-            const SizedBox(height: 10),
-            // Configuración
-            SectionHeader(title: context.t('settings.title')),
-            Text(
-              context.t('settings.theme'),
-              style: TextStyle(fontSize: 13.5, color: c.inkMuted),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  label: Text(context.t('settings.theme.light')),
-                  icon: const Icon(Icons.light_mode_outlined, size: 17),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  label: Text(context.t('settings.theme.dark')),
-                  icon: const Icon(Icons.dark_mode_outlined, size: 17),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  label: Text(context.t('settings.theme.system')),
-                  icon: const Icon(Icons.brightness_auto_outlined, size: 17),
-                ),
-              ],
-              selected: {themeController.mode},
-              onSelectionChanged: (selection) =>
-                  themeController.setMode(selection.first),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              context.t('settings.language'),
-              style: TextStyle(fontSize: 13.5, color: c.inkMuted),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'es', label: Text('Español')),
-                ButtonSegment(value: 'en', label: Text('English')),
-              ],
-              selected: {localeController.language},
-              onSelectionChanged: (selection) =>
-                  localeController.setLanguage(selection.first),
-            ),
-            const SizedBox(height: 24),
-            // Seguridad
-            SectionHeader(title: context.t('settings.security')),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.lock_outline),
-              label: Text(context.t('settings.change_password')),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const ChangePasswordDialog(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
