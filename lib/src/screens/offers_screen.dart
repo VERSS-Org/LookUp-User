@@ -11,19 +11,54 @@ import 'package:lookup_user/src/widgets/common.dart';
 
 /// Listado plano de vacantes; el detalle se abre desde cada fila.
 class OffersScreen extends StatefulWidget {
-  const OffersScreen({super.key, this.onClearSearch});
+  const OffersScreen({
+    super.key,
+    this.onClearSearch,
+    this.mobileSearchMode = false,
+  });
 
   final VoidCallback? onClearSearch;
+  final bool mobileSearchMode;
 
   @override
   State<OffersScreen> createState() => _OffersScreenState();
 }
 
 class _OffersScreenState extends State<OffersScreen> {
+  final TextEditingController _mobileSearchController = TextEditingController();
   List<Map<String, dynamic>> _companies = [];
   int _searchStamp = 0;
   String _companyQuery = '';
   bool _isSearchingCompanies = false;
+  bool _mobileQueryInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.mobileSearchMode && !_mobileQueryInitialized) {
+      _mobileSearchController.text = context
+          .read<LookUpDataService>()
+          .searchQuery;
+      _mobileQueryInitialized = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _mobileSearchController.dispose();
+    super.dispose();
+  }
+
+  void _updateMobileSearch(String value) {
+    context.read<LookUpDataService>().setSearchQuery(value);
+  }
+
+  void _clearSearch() {
+    _mobileSearchController.clear();
+    (widget.onClearSearch ??
+        () => context.read<LookUpDataService>().setSearchQuery(''))();
+    setState(() {});
+  }
 
   Future<void> _searchCompanies(String value) async {
     final stamp = ++_searchStamp;
@@ -79,9 +114,32 @@ class _OffersScreenState extends State<OffersScreen> {
           padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
           children: [
             Text(
-              context.t('offers.title'),
+              context.t(
+                widget.mobileSearchMode ? 'nav.search' : 'offers.title',
+              ),
               style: Theme.of(context).textTheme.headlineSmall,
             ),
+            if (widget.mobileSearchMode) ...[
+              const SizedBox(height: 14),
+              TextField(
+                key: const Key('mobile-search-field'),
+                controller: _mobileSearchController,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: _updateMobileSearch,
+                decoration: InputDecoration(
+                  hintText: context.t('search.hint'),
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: context.t('search.clear'),
+                          icon: const Icon(Icons.close, size: 19),
+                          onPressed: _clearSearch,
+                        ),
+                ),
+              ),
+            ],
             if (query.isNotEmpty) ...[
               const SizedBox(height: 5),
               Row(
@@ -94,12 +152,12 @@ class _OffersScreenState extends State<OffersScreen> {
                       style: TextStyle(color: c.inkMuted, fontSize: 13.5),
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed:
-                        widget.onClearSearch ?? () => data.setSearchQuery(''),
-                    icon: const Icon(Icons.close, size: 17),
-                    label: Text(context.t('search.clear')),
-                  ),
+                  if (!widget.mobileSearchMode)
+                    TextButton.icon(
+                      onPressed: _clearSearch,
+                      icon: const Icon(Icons.close, size: 17),
+                      label: Text(context.t('search.clear')),
+                    ),
                 ],
               ),
             ],

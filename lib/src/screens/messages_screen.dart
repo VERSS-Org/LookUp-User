@@ -15,10 +15,19 @@ import 'package:lookup_user/src/widgets/common.dart';
 /// En pantallas anchas: dos paneles (lista de chats + conversación), como un
 /// cliente de mensajería de escritorio. En móvil: lista y chat apilados.
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key, this.embedded = false});
+  const MessagesScreen({
+    super.key,
+    this.embedded = false,
+    this.initialPostulacionId,
+  });
 
   /// true cuando vive dentro del shell web (sin flecha de volver).
   final bool embedded;
+
+  /// Hilo que debe quedar abierto al llegar desde Procesos. La seleccion se
+  /// resuelve despues de cargar la bandeja, por lo que tambien funciona si el
+  /// inbox aun no estaba disponible.
+  final String? initialPostulacionId;
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -30,6 +39,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
   String _filter = '';
   String? _loadError;
   bool _isLoading = true;
+  bool _didApplyInitialThread = false;
+
+  void _selectInitialThread(List<Map<String, dynamic>> inbox) {
+    if (_didApplyInitialThread) return;
+    final requestedId = widget.initialPostulacionId;
+    if (requestedId == null || requestedId.isEmpty) return;
+    for (final thread in inbox) {
+      if (thread['postulacion_id']?.toString() == requestedId) {
+        _selected = thread;
+        _didApplyInitialThread = true;
+        return;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -53,9 +76,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
     try {
       await context.read<LookUpDataService>().fetchInbox();
       if (!mounted) return;
+      final inbox = context.read<LookUpDataService>().inbox;
+      _selectInitialThread(inbox);
       final selectedId = _selected?['postulacion_id']?.toString();
       if (selectedId != null &&
-          !context.read<LookUpDataService>().inbox.any(
+          !inbox.any(
             (thread) => thread['postulacion_id']?.toString() == selectedId,
           )) {
         _selected = null;
@@ -67,23 +92,19 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  void _open(Map<String, dynamic> hilo, bool isWide) {
-    if (isWide) {
-      setState(() => _selected = hilo);
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ChatScreen(hilo: hilo)),
-      );
-    }
+  void _open(Map<String, dynamic> hilo) {
+    _didApplyInitialThread = true;
+    setState(() => _selected = hilo);
   }
+
+  void _closeMobileThread() => setState(() => _selected = null);
 
   @override
   Widget build(BuildContext context) {
     final data = context.watch<LookUpDataService>();
     final c = context.colors;
     final inbox = data.inbox;
-    final isWide = MediaQuery.sizeOf(context).width >= 860;
+    final isWide = MediaQuery.sizeOf(context).width >= 960;
     final normalizedFilter = normalizeSearchText(_filter);
     final filteredInbox = inbox.where((thread) {
       final counterpart = asMap(thread['contraparte']);
@@ -146,7 +167,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               isWide &&
               _selected?['postulacion_id'] ==
                   filteredInbox[index]['postulacion_id'],
-          onTap: () => _open(filteredInbox[index], isWide),
+          onTap: () => _open(filteredInbox[index]),
         ),
       );
     }
@@ -171,7 +192,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       return Scaffold(
         appBar: widget.embedded
             ? null
-            : AppBar(centerTitle: true, title: Text(context.t('chat.title'))),
+            : AppBar(centerTitle: true, title: const BrandMark(size: 32)),
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -184,23 +205,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
             Expanded(
               child: _selected == null
                   ? Container(
+                      key: const Key('messages-empty-pane'),
                       color: c.background,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const BrandMark(size: 46),
-                            const SizedBox(height: 14),
-                            Text(
-                              context.t('chat.empty.title'),
-                              style: TextStyle(color: c.inkMuted, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ),
+                      child: const Center(child: BrandMark(size: 46)),
                     )
                   : ChatView(
-                      key: ValueKey(_selected!['postulacion_id']),
+                      key: Key(
+                        'selected-thread-${_selected!['postulacion_id']}',
+                      ),
                       hilo: _selected!,
                     ),
             ),
@@ -209,7 +221,28 @@ class _MessagesScreenState extends State<MessagesScreen> {
       );
     }
 
+    if (_selected != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _closeMobileThread();
+        },
+        child: Scaffold(
+          key: const Key('mobile-chat-screen'),
+          body: SafeArea(
+            child: ChatView(
+              key: Key('selected-thread-${_selected!['postulacion_id']}'),
+              hilo: _selected!,
+              showBack: true,
+              onBack: _closeMobileThread,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      key: const Key('mobile-messages-list'),
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
@@ -217,9 +250,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(context.t('chat.title')),
+        title: const BrandMark(size: 32),
       ),
-      body: listPanel,
+      body: SafeArea(top: false, child: listPanel),
     );
   }
 }
@@ -390,27 +423,19 @@ class _ThreadTile extends StatelessWidget {
   }
 }
 
-/// Chat como página completa (móvil).
-class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key, required this.hilo});
-
-  final Map<String, dynamic> hilo;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(child: ChatView(hilo: hilo, showBack: true)),
-    );
-  }
-}
-
 /// Conversación: cabecera, burbujas y campo de envío. Se usa como página
 /// (móvil) o como panel derecho (web).
 class ChatView extends StatefulWidget {
-  const ChatView({super.key, required this.hilo, this.showBack = false});
+  const ChatView({
+    super.key,
+    required this.hilo,
+    this.showBack = false,
+    this.onBack,
+  });
 
   final Map<String, dynamic> hilo;
   final bool showBack;
+  final VoidCallback? onBack;
 
   @override
   State<ChatView> createState() => _ChatViewState();
@@ -523,6 +548,7 @@ class _ChatViewState extends State<ChatView> {
     final mensajes = data.threadFor(_postulacionId);
     final contraparte = asMap(widget.hilo['contraparte']);
     final auth = context.watch<AuthService>();
+    final compact = MediaQuery.sizeOf(context).width < 430;
 
     return Container(
       color: c.background,
@@ -542,7 +568,8 @@ class _ChatViewState extends State<ChatView> {
                   IconButton(
                     tooltip: context.t('common.back'),
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed:
+                        widget.onBack ?? () => Navigator.maybePop(context),
                   ),
                 CompanyAvatar(
                   fotoUrl: contraparte['foto_url']?.toString(),
@@ -574,7 +601,7 @@ class _ChatViewState extends State<ChatView> {
                     ],
                   ),
                 ),
-                if (widget.hilo['estado_postulacion'] != null)
+                if (!compact && widget.hilo['estado_postulacion'] != null)
                   StatusChip(
                     label: widget.hilo['estado_postulacion'].toString(),
                     compact: true,
@@ -595,71 +622,81 @@ class _ChatViewState extends State<ChatView> {
                     ),
                   ),
           ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            decoration: BoxDecoration(
-              color: c.surface,
-              border: Border(top: BorderSide(color: c.border)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    minLines: 1,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _send(),
-                    decoration: InputDecoration(
-                      hintText: context.t('chat.reply'),
-                      fillColor: c.surfaceAlt,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: BorderSide(color: c.brand),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(
+                compact ? 10 : 12,
+                8,
+                compact ? 10 : 12,
+                8,
+              ),
+              decoration: BoxDecoration(
+                color: c.surface,
+                border: Border(top: BorderSide(color: c.border)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const Key('chat-message-field'),
+                      controller: _controller,
+                      minLines: 1,
+                      maxLines: compact ? 3 : 4,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      decoration: InputDecoration(
+                        hintText: context.t('chat.reply'),
+                        fillColor: c.surfaceAlt,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(22),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(22),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(22),
+                          borderSide: BorderSide(color: c.brand),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Material(
-                  color: c.brand,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _isSending ? null : _send,
-                    child: Padding(
-                      padding: const EdgeInsets.all(11),
-                      child: _isSending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                  const SizedBox(width: 8),
+                  Material(
+                    color: c.brand,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: _isSending ? null : _send,
+                      child: Padding(
+                        padding: const EdgeInsets.all(11),
+                        child: _isSending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.send_rounded,
                                 color: Colors.white,
+                                size: 20,
                               ),
-                            )
-                          : const Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -691,6 +728,7 @@ class ChatBubble extends StatelessWidget {
     final motivo = feedback['motivo_rechazo']?.toString();
     final isMine = contacto['remitente_rol']?.toString() == myRole;
     final esEvento = tipo == 'aprobacion' || tipo == 'rechazo';
+    final compact = MediaQuery.sizeOf(context).width < 430;
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -698,8 +736,8 @@ class ChatBubble extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 440),
         margin: EdgeInsets.only(
           bottom: 7,
-          left: isMine ? 56 : 0,
-          right: isMine ? 0 : 56,
+          left: isMine ? (compact ? 34 : 56) : 0,
+          right: isMine ? 0 : (compact ? 34 : 56),
         ),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
         decoration: BoxDecoration(

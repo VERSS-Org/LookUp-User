@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lookup_user/main.dart';
+import 'package:lookup_user/src/screens/applications_screen.dart';
 import 'package:lookup_user/src/screens/messages_screen.dart';
 import 'package:lookup_user/src/screens/profile_screen.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
@@ -9,8 +10,28 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _TestDataService extends LookUpDataService {
+  _TestDataService({
+    this.testInbox = const <Map<String, dynamic>>[],
+    this.testApplications = const <Map<String, dynamic>>[],
+  });
+
+  final List<Map<String, dynamic>> testInbox;
+  final List<Map<String, dynamic>> testApplications;
+
+  @override
+  List<Map<String, dynamic>> get inbox => testInbox;
+
+  @override
+  List<Map<String, dynamic>> get applications => testApplications;
+
   @override
   Future<void> fetchInbox({bool notify = true}) async {}
+
+  @override
+  Future<void> fetchThread(String postulacionId, {bool notify = true}) async {}
+
+  @override
+  Future<void> markThreadRead(String postulacionId) async {}
 
   @override
   Future<void> fetchEvents({bool notify = true}) async {}
@@ -20,25 +41,37 @@ class _TestDataService extends LookUpDataService {
 }
 
 class _TestAuthService extends AuthService {
-  _TestAuthService(this.testProfile);
+  _TestAuthService(Map<String, dynamic> profile)
+    : testProfile = Map<String, dynamic>.from(profile) {
+    final perfil = testProfile['perfil'];
+    if (perfil is Map) {
+      testProfile['perfil'] = Map<String, dynamic>.from(perfil);
+    }
+  }
 
   final Map<String, dynamic> testProfile;
+  Map<String, dynamic>? lastProfileUpdate;
 
   @override
   Map<String, dynamic>? get profile => testProfile;
 
   @override
-  Future<bool> updateProfile(Map<String, dynamic> updates) async => true;
+  Future<bool> updateProfile(Map<String, dynamic> updates) async {
+    lastProfileUpdate = Map<String, dynamic>.from(updates);
+    testProfile.addAll(updates);
+    notifyListeners();
+    return true;
+  }
 }
 
-Widget _testShell() {
+Widget _testShell({LookUpDataService? data, AuthService? auth}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => ThemeController()),
       ChangeNotifierProvider(create: (_) => LocaleController()),
-      ChangeNotifierProvider(create: (_) => AuthService()),
+      ChangeNotifierProvider<AuthService>(create: (_) => auth ?? AuthService()),
       ChangeNotifierProvider<LookUpDataService>(
-        create: (_) => _TestDataService(),
+        create: (_) => data ?? _TestDataService(),
       ),
     ],
     child: MaterialApp(
@@ -48,16 +81,22 @@ Widget _testShell() {
   );
 }
 
-Widget _testFeature({required Widget child, Map<String, dynamic>? profile}) {
+Widget _testFeature({
+  required Widget child,
+  Map<String, dynamic>? profile,
+  AuthService? auth,
+  LookUpDataService? data,
+}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => ThemeController()),
       ChangeNotifierProvider(create: (_) => LocaleController()),
       ChangeNotifierProvider<AuthService>(
-        create: (_) => _TestAuthService(profile ?? const <String, dynamic>{}),
+        create: (_) =>
+            auth ?? _TestAuthService(profile ?? const <String, dynamic>{}),
       ),
       ChangeNotifierProvider<LookUpDataService>(
-        create: (_) => _TestDataService(),
+        create: (_) => data ?? _TestDataService(),
       ),
     ],
     child: MaterialApp(theme: buildLookUpTheme(Brightness.light), home: child),
@@ -107,9 +146,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hola, Postulante'), findsOneWidget);
-    expect(find.text('Vacantes'), findsWidgets);
-    expect(find.text('Procesos'), findsWidgets);
-    expect(find.text('Progreso'), findsWidgets);
+    expect(find.byType(NavigationDestination), findsNWidgets(5));
+    expect(find.byKey(const Key('mobile-bottom-navigation')), findsOneWidget);
+    expect(find.text('Accesos rápidos'), findsNothing);
     expect(find.byType(SearchBar), findsNothing);
 
     final brand = tester.widget<BrandMark>(find.byType(BrandMark));
@@ -117,15 +156,18 @@ void main() {
 
     final chatX = tester.getCenter(find.byTooltip('Mensajes')).dx;
     final logoX = tester.getCenter(find.byType(BrandMark)).dx;
-    final searchX = tester
-        .getCenter(find.byTooltip('Buscar vacantes o empresas'))
-        .dx;
     final notificationX = tester.getCenter(find.byTooltip('Notificaciones')).dx;
     final profileX = tester.getCenter(find.byType(InitialsAvatar)).dx;
 
     expect(chatX, lessThan(logoX));
-    expect(searchX, lessThan(notificationX));
+    expect(logoX, lessThan(notificationX));
     expect(notificationX, lessThan(profileX));
+
+    await tester.tap(find.byKey(const Key('mobile-search-destination')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mobile-search-field')), findsOneWidget);
+    expect(find.byKey(const Key('mobile-bottom-navigation')), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.byTooltip('Notificaciones'));
     await tester.pumpAndSettle();
@@ -167,6 +209,29 @@ void main() {
     expect(tester.getSize(popover).width, lessThan(500));
     expect(tester.getSize(popover).height, lessThan(600));
     expect(find.text('Hola, Postulante'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile search becomes vacancies cleanly after desktop resize', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(360, 800));
+
+    await tester.pumpWidget(_testShell());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mobile-search-destination')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mobile-search-field')), findsOneWidget);
+    expect(find.byKey(const Key('mobile-bottom-navigation')), findsOneWidget);
+
+    tester.view.physicalSize = const Size(1200, 800);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mobile-search-field')), findsNothing);
+    expect(find.byKey(const Key('mobile-bottom-navigation')), findsNothing);
+    expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.text('Vacantes laborales'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -226,6 +291,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      final pageScroll = find.byKey(const Key('profile-page-scroll'));
+      expect(pageScroll, findsOneWidget);
+      expect(tester.getSize(pageScroll).width, 1200);
+      expect(
+        find.ancestor(of: pageScroll, matching: find.byType(PageContainer)),
+        findsNothing,
+      );
       expect(find.text('Mi perfil'), findsNothing);
       expect(find.byKey(const Key('profile-change-photo')), findsOneWidget);
       expect(find.byKey(const Key('profile-edit-general')), findsOneWidget);
@@ -285,23 +357,208 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('profile privacy toggle persists mostrar_email', (tester) async {
+    _setViewport(tester, const Size(1200, 900));
+    final auth = _TestAuthService(const {
+      'nombre_completo': 'Luis Rodriguez',
+      'email': 'luis@example.com',
+      'perfil': <String, dynamic>{'mostrar_email': true},
+    });
+
+    await tester.pumpWidget(
+      _testFeature(child: const ProfileScreen(embedded: true), auth: auth),
+    );
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('profile-show-email-switch'));
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    final perfil = auth.lastProfileUpdate?['perfil'] as Map<String, dynamic>?;
+    expect(perfil?['mostrar_email'], isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop messages omits the redundant inner title', (
     tester,
   ) async {
     _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      testInbox: const [
+        {
+          'postulacion_id': 'app-1',
+          'puesto_titulo': 'Desarrollador Flutter',
+          'contraparte': {'nombre': 'CocaCola'},
+          'ultimo_mensaje': {
+            'texto': 'Hola Luis',
+            'fecha': '2026-07-13T10:30:00',
+            'remitente_rol': 'empresa',
+          },
+          'no_leidos': 1,
+        },
+      ],
+    );
 
     await tester.pumpWidget(
-      _testFeature(child: const MessagesScreen(embedded: true)),
+      _testFeature(child: const MessagesScreen(embedded: true), data: data),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Mensajes'), findsNothing);
+    expect(find.text('Aún no tienes mensajes'), findsNothing);
     expect(find.byKey(const Key('messages-list-panel')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('messages-list-panel'))).width,
       360,
     );
     expect(find.text('Buscar conversaciones'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('messages selects the requested async inbox thread', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      testInbox: const [
+        {
+          'postulacion_id': 'app-1',
+          'puesto_titulo': 'Frontend',
+          'contraparte': {'nombre': 'Empresa A'},
+          'ultimo_mensaje': {'texto': 'Uno'},
+        },
+        {
+          'postulacion_id': 'app-2',
+          'puesto_titulo': 'Backend',
+          'contraparte': {'nombre': 'Empresa B'},
+          'ultimo_mensaje': {'texto': 'Dos'},
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      _testFeature(
+        child: const MessagesScreen(
+          embedded: true,
+          initialPostulacionId: 'app-2',
+        ),
+        data: data,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('selected-thread-app-2')), findsOneWidget);
+    expect(find.byKey(const Key('messages-empty-pane')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('process open conversation targets its application thread', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1200, 800));
+    String? openedId;
+    final data = _TestDataService(
+      testApplications: const [
+        {
+          'postulacion_id': 'app-exact',
+          'estado': 'entrevista',
+          'fecha_postulacion': '2026-07-12',
+          'puesto': {'titulo': 'Backend'},
+          'empresa': {'nombre': 'Empresa Exacta'},
+          'hitos': <Map<String, dynamic>>[],
+        },
+      ],
+      testInbox: const [
+        {
+          'postulacion_id': 'app-exact',
+          'puesto_titulo': 'Backend',
+          'contraparte': {'nombre': 'Empresa Exacta'},
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      _testFeature(
+        child: ApplicationsScreen(onOpenConversation: (id) => openedId = id),
+        data: data,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('application-open-chat-app-exact')));
+    await tester.pump();
+
+    expect(openedId, 'app-exact');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop process switches shell to the exact message thread', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      testApplications: const [
+        {
+          'postulacion_id': 'app-shell',
+          'estado': 'entrevista',
+          'fecha_postulacion': '2026-07-12',
+          'puesto': {'titulo': 'QA'},
+          'empresa': {'nombre': 'Empresa Shell'},
+          'hitos': <Map<String, dynamic>>[],
+        },
+      ],
+      testInbox: const [
+        {
+          'postulacion_id': 'app-shell',
+          'puesto_titulo': 'QA',
+          'contraparte': {'nombre': 'Empresa Shell'},
+          'ultimo_mensaje': {'texto': 'Coordinemos'},
+        },
+      ],
+    );
+
+    await tester.pumpWidget(_testShell(data: data));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Procesos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('application-open-chat-app-shell')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('selected-thread-app-shell')), findsOneWidget);
+    expect(find.text('Mis postulaciones'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile messages opens a compact chat in the same flow', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(360, 800));
+    final data = _TestDataService(
+      testInbox: const [
+        {
+          'postulacion_id': 'app-mobile',
+          'puesto_titulo': 'Frontend',
+          'estado_postulacion': 'entrevista',
+          'contraparte': {'nombre': 'Empresa Móvil'},
+          'ultimo_mensaje': {'texto': 'Hola'},
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      _testFeature(child: const MessagesScreen(), data: data),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mobile-messages-list')), findsOneWidget);
+    expect(find.text('Mensajes'), findsNothing);
+
+    await tester.tap(find.text('Empresa Móvil'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mobile-chat-screen')), findsOneWidget);
+    expect(find.byKey(const Key('selected-thread-app-mobile')), findsOneWidget);
+    expect(find.byKey(const Key('chat-message-field')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

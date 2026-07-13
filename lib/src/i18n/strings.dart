@@ -33,6 +33,7 @@ const Map<String, String> stringsEs = {
 
   // Navegación
   'nav.home': 'Inicio',
+  'nav.search': 'Buscar',
   'nav.offers': 'Vacantes',
   'nav.processes': 'Procesos',
   'nav.metrics': 'Progreso',
@@ -91,11 +92,6 @@ const Map<String, String> stringsEs = {
   'home.subtitle': 'Este es el estado de tu búsqueda laboral hoy.',
   'home.applications': 'Postulaciones',
   'home.in_process': 'Activas',
-  'home.quick': 'Accesos rápidos',
-  'home.progress': 'Ver mi avance',
-  'home.progress.sub': 'Sigue el estado de tus procesos',
-  'home.metrics': 'Mi progreso',
-  'home.metrics.sub': 'Resultados e hitos',
   'home.news': 'Notificaciones recientes',
   'home.news.all': 'Ver todo',
 
@@ -213,6 +209,10 @@ const Map<String, String> stringsEs = {
   'settings.theme.dark': 'Oscuro',
   'settings.theme.system': 'Sistema',
   'settings.language': 'Idioma',
+  'settings.privacy': 'Privacidad',
+  'settings.privacy.email.title': 'Mostrar mi correo a las empresas',
+  'settings.privacy.email.subtitle':
+      'Puedes ocultarlo sin afectar los mensajes dentro de LookUp.',
   'settings.security': 'Seguridad',
   'settings.change_password': 'Cambiar contraseña',
   'settings.password.current': 'Contraseña actual',
@@ -312,6 +312,7 @@ const Map<String, String> stringsEn = {
   'common.required': 'This field is required.',
 
   'nav.home': 'Home',
+  'nav.search': 'Search',
   'nav.offers': 'Vacancies',
   'nav.processes': 'Processes',
   'nav.metrics': 'Progress',
@@ -367,11 +368,6 @@ const Map<String, String> stringsEn = {
   'home.subtitle': 'This is the state of your job search today.',
   'home.applications': 'Applications',
   'home.in_process': 'Active',
-  'home.quick': 'Quick actions',
-  'home.progress': 'View my progress',
-  'home.progress.sub': 'Track the status of your processes',
-  'home.metrics': 'My progress',
-  'home.metrics.sub': 'Results and milestones',
   'home.news': 'Recent notifications',
   'home.news.all': 'See all',
 
@@ -480,6 +476,10 @@ const Map<String, String> stringsEn = {
   'settings.theme.dark': 'Dark',
   'settings.theme.system': 'System',
   'settings.language': 'Language',
+  'settings.privacy': 'Privacy',
+  'settings.privacy.email.title': 'Show my email to companies',
+  'settings.privacy.email.subtitle':
+      'You can hide it without affecting messages inside LookUp.',
   'settings.security': 'Security',
   'settings.change_password': 'Change password',
   'settings.password.current': 'Current password',
