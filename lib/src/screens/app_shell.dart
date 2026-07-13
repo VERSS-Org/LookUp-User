@@ -253,11 +253,14 @@ class _AppShellState extends State<AppShell> {
             // Navigator interno: los detalles se apilan aquí debajo del
             // navbar, en lugar de tapar toda la pantalla.
             Expanded(
-              child: Navigator(
-                key: _contentNavigatorKey,
-                onGenerateRoute: (settings) => MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => _pageFor(_index),
+              child: _SectionSwitcher(
+                transitionKey: _index,
+                child: Navigator(
+                  key: _contentNavigatorKey,
+                  onGenerateRoute: (settings) => MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => _pageFor(_index),
+                  ),
                 ),
               ),
             ),
@@ -319,7 +322,10 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
       endDrawer: const ProfileDrawer(),
-      body: _pageFor(_index <= 3 ? _index : _primaryIndex),
+      body: _SectionSwitcher(
+        transitionKey: _index <= 3 ? _index : _primaryIndex,
+        child: _pageFor(_index <= 3 ? _index : _primaryIndex),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: c.border)),
@@ -342,6 +348,36 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Cambio de sección breve y consistente, sin desplazar el contenido ni
+/// introducir efectos decorativos que compitan con la interfaz.
+class _SectionSwitcher extends StatelessWidget {
+  const _SectionSwitcher({required this.transitionKey, required this.child});
+
+  final Object transitionKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      reverseDuration: const Duration(milliseconds: 140),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.01, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: KeyedSubtree(key: ValueKey(transitionKey), child: child),
     );
   }
 }
@@ -387,18 +423,21 @@ class _TopNavBar extends StatelessWidget {
     final c = context.colors;
     final auth = context.watch<AuthService>();
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final searchWidth = viewportWidth >= 1360
-        ? 420.0
+    final compactNav = viewportWidth < 1240;
+    final searchWidth = viewportWidth >= 1600
+        ? 540.0
+        : viewportWidth >= 1360
+        ? 480.0
         : viewportWidth >= 1180
-        ? 340.0
-        : 250.0;
+        ? 380.0
+        : 280.0;
     final nombre =
         auth.profile?['nombre_completo']?.toString() ??
         context.t('common.applicant');
 
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: EdgeInsets.symmetric(horizontal: compactNav ? 14 : 18),
       decoration: BoxDecoration(
         color: c.surface,
         border: Border(bottom: BorderSide(color: c.border)),
@@ -413,24 +452,30 @@ class _TopNavBar extends StatelessWidget {
               child: BrandMark(size: 38),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: compactNav ? 8 : 16),
           for (var i = 0; i < destinations.length; i++)
             _NavLink(
               label: destinations[i].label,
               selected: index == i,
               badge: i == 2 ? processAlerts : 0,
+              compact: compactNav,
               onTap: () => onSelect(i),
             ),
-          const Spacer(),
-          SizedBox(
-            width: searchWidth,
-            child: _GlobalSearch(
-              controller: searchController,
-              onChanged: onSearchChanged,
-              onSubmitted: onSearchSubmitted,
-              onClear: onClearSearch,
-              onOpenJob: onOpenJob,
-              onOpenCompany: onOpenCompany,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: searchWidth,
+                child: _GlobalSearch(
+                  controller: searchController,
+                  onChanged: onSearchChanged,
+                  onSubmitted: onSearchSubmitted,
+                  onClear: onClearSearch,
+                  onOpenJob: onOpenJob,
+                  onOpenCompany: onOpenCompany,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -777,11 +822,13 @@ class _NavLink extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.badge = 0,
+    this.compact = false,
   });
 
   final String label;
   final bool selected;
   final int badge;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -791,7 +838,7 @@ class _NavLink extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 14),
         height: 60,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -802,7 +849,7 @@ class _NavLink extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: compact ? 13.5 : 14,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     color: selected ? c.brand : c.inkMuted,
                   ),

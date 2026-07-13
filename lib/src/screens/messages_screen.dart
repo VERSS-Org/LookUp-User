@@ -151,6 +151,22 @@ class _MessagesScreenState extends State<MessagesScreen> {
       );
     }
 
+    final listPanel = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          child: _ThreadSearchField(
+            controller: _filterController,
+            onChanged: (value) => setState(() => _filter = value),
+          ),
+        ),
+        Divider(color: c.border, height: 1),
+        Expanded(
+          child: RefreshIndicator(onRefresh: _loadInbox, child: lista),
+        ),
+      ],
+    );
+
     if (isWide) {
       return Scaffold(
         appBar: widget.embedded
@@ -160,41 +176,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
+              key: const Key('messages-list-panel'),
               width: 360,
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: c.border)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.t('chat.title'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: c.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _ThreadSearchField(
-                          controller: _filterController,
-                          onChanged: (value) => setState(() => _filter = value),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _loadInbox,
-                      child: lista,
-                    ),
-                  ),
-                ],
-              ),
+              child: listPanel,
             ),
             VerticalDivider(width: 1, color: c.border),
             Expanded(
@@ -235,20 +219,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ),
         title: Text(context.t('chat.title')),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: _ThreadSearchField(
-              controller: _filterController,
-              onChanged: (value) => setState(() => _filter = value),
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(onRefresh: _loadInbox, child: lista),
-          ),
-        ],
-      ),
+      body: listPanel,
     );
   }
 }
@@ -268,7 +239,7 @@ class _ThreadSearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: context.t('chat.search.hint'),
-        prefixIcon: const Icon(Icons.search, size: 19),
+        prefixIcon: const Icon(Icons.search),
         suffixIcon: controller.text.isEmpty
             ? null
             : IconButton(
@@ -280,7 +251,6 @@ class _ThreadSearchField extends StatelessWidget {
                 },
               ),
         fillColor: c.surfaceAlt,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       ),
     );
   }

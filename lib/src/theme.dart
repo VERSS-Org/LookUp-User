@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lookup_user/src/services/locale_controller.dart';
@@ -8,6 +7,55 @@ import 'package:lookup_user/src/services/locale_controller.dart';
 const Color kBrandBlue = Color(0xFF28348A);
 const Color kBrandBlueBright = Color(0xFF4053C8);
 const Color kSkyBlue = Color(0xFF22A9E8);
+const String kLookUpFontFamily = 'Helvetica';
+const List<String> kLookUpFontFallback = ['Arial', 'sans-serif'];
+
+TextStyle _lookUpTextStyle({
+  Color? color,
+  double? fontSize,
+  FontWeight? fontWeight,
+  double? height,
+  double? letterSpacing,
+}) => TextStyle(
+  fontFamily: kLookUpFontFamily,
+  fontFamilyFallback: kLookUpFontFallback,
+  color: color,
+  fontSize: fontSize,
+  fontWeight: fontWeight,
+  height: height,
+  letterSpacing: letterSpacing,
+);
+
+/// Transición compartida para que la navegación se sienta continua en web
+/// y móvil sin animaciones llamativas.
+class LookUpPageTransitionsBuilder extends PageTransitionsBuilder {
+  const LookUpPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curvedAnimation = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.88, end: 1).animate(curvedAnimation),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.012, 0),
+          end: Offset.zero,
+        ).animate(curvedAnimation),
+        child: child,
+      ),
+    );
+  }
+}
 
 /// Tokens de color dependientes del modo (claro/oscuro).
 ///
@@ -216,6 +264,8 @@ ThemeData buildLookUpTheme(Brightness brightness) {
   final base = ThemeData(
     useMaterial3: true,
     brightness: brightness,
+    fontFamily: kLookUpFontFamily,
+    fontFamilyFallback: kLookUpFontFallback,
     colorScheme: ColorScheme.fromSeed(
       seedColor: kBrandBlue,
       brightness: brightness,
@@ -230,27 +280,27 @@ ThemeData buildLookUpTheme(Brightness brightness) {
     scaffoldBackgroundColor: palette.background,
   );
 
-  final textTheme = GoogleFonts.poppinsTextTheme(base.textTheme)
+  final textTheme = base.textTheme
       .apply(bodyColor: palette.ink, displayColor: palette.ink)
       .copyWith(
-        headlineSmall: GoogleFonts.poppins(
+        headlineSmall: _lookUpTextStyle(
           fontSize: 23,
           fontWeight: FontWeight.w600,
           color: palette.ink,
           height: 1.25,
         ),
-        titleLarge: GoogleFonts.poppins(
+        titleLarge: _lookUpTextStyle(
           fontWeight: FontWeight.w700,
           letterSpacing: 0,
           color: palette.ink,
         ),
-        titleMedium: GoogleFonts.poppins(
+        titleMedium: _lookUpTextStyle(
           fontWeight: FontWeight.w600,
           color: palette.ink,
         ),
-        bodyMedium: GoogleFonts.poppins(height: 1.45, color: palette.ink),
-        bodySmall: GoogleFonts.poppins(color: palette.inkMuted),
-        labelLarge: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        bodyMedium: _lookUpTextStyle(height: 1.45, color: palette.ink),
+        bodySmall: _lookUpTextStyle(color: palette.inkMuted),
+        labelLarge: _lookUpTextStyle(fontWeight: FontWeight.w600),
       );
 
   OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
@@ -263,6 +313,16 @@ ThemeData buildLookUpTheme(Brightness brightness) {
     textTheme: textTheme,
     primaryTextTheme: textTheme,
     extensions: [palette],
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: LookUpPageTransitionsBuilder(),
+        TargetPlatform.iOS: LookUpPageTransitionsBuilder(),
+        TargetPlatform.macOS: LookUpPageTransitionsBuilder(),
+        TargetPlatform.windows: LookUpPageTransitionsBuilder(),
+        TargetPlatform.linux: LookUpPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: LookUpPageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: palette.background,
       foregroundColor: palette.ink,
@@ -270,7 +330,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
-      titleTextStyle: GoogleFonts.poppins(
+      titleTextStyle: _lookUpTextStyle(
         color: palette.ink,
         fontSize: 19,
         fontWeight: FontWeight.w700,
@@ -296,10 +356,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         disabledForegroundColor: palette.inkFaint,
         minimumSize: const Size(64, 48),
         elevation: 0,
-        textStyle: GoogleFonts.poppins(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: _lookUpTextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
@@ -308,10 +365,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         backgroundColor: primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        textStyle: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
@@ -320,30 +374,24 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         foregroundColor: palette.brand,
         minimumSize: const Size(64, 46),
         side: BorderSide(color: palette.border, width: 1.2),
-        textStyle: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: palette.brand,
-        textStyle: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: palette.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      hintStyle: GoogleFonts.poppins(color: palette.inkFaint),
-      labelStyle: GoogleFonts.poppins(color: palette.inkMuted),
-      helperStyle: GoogleFonts.poppins(color: palette.inkFaint, fontSize: 12),
-      floatingLabelStyle: GoogleFonts.poppins(
+      hintStyle: _lookUpTextStyle(color: palette.inkFaint),
+      labelStyle: _lookUpTextStyle(color: palette.inkMuted),
+      helperStyle: _lookUpTextStyle(color: palette.inkFaint, fontSize: 12),
+      floatingLabelStyle: _lookUpTextStyle(
         color: palette.brand,
         fontWeight: FontWeight.w600,
       ),
@@ -368,7 +416,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       indicatorColor: primary.withValues(alpha: isDark ? 0.28 : 0.12),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => GoogleFonts.poppins(
+        (states) => _lookUpTextStyle(
           fontSize: 11,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
@@ -390,7 +438,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: isDark ? palette.surfaceAlt : const Color(0xFF232B3E),
-      contentTextStyle: GoogleFonts.poppins(color: Colors.white),
+      contentTextStyle: _lookUpTextStyle(color: Colors.white),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     dialogTheme: DialogThemeData(
@@ -400,7 +448,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: palette.border),
       ),
-      titleTextStyle: GoogleFonts.poppins(
+      titleTextStyle: _lookUpTextStyle(
         color: palette.ink,
         fontSize: 19,
         fontWeight: FontWeight.w700,
@@ -418,7 +466,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: palette.surfaceAlt,
       side: BorderSide(color: palette.border),
-      labelStyle: GoogleFonts.poppins(color: palette.ink, fontSize: 13),
+      labelStyle: _lookUpTextStyle(color: palette.ink, fontSize: 13),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
@@ -427,10 +475,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         selectedForegroundColor: palette.brand,
         foregroundColor: palette.inkMuted,
         side: BorderSide(color: palette.border),
-        textStyle: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: _lookUpTextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
     ),
     tooltipTheme: TooltipThemeData(
@@ -438,7 +483,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         color: isDark ? palette.surfaceAlt : const Color(0xFF232B3E),
         borderRadius: BorderRadius.circular(8),
       ),
-      textStyle: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
+      textStyle: _lookUpTextStyle(color: Colors.white, fontSize: 12),
     ),
   );
 }

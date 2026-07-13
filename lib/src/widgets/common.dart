@@ -83,30 +83,47 @@ class InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.border)),
+    final valueText = Text(
+      value.trim(),
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+        color: c.ink,
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: c.inkFaint, size: 19),
-          const SizedBox(width: 12),
-          Text(label, style: TextStyle(fontSize: 13.5, color: c.inkMuted)),
-          const Spacer(),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: c.ink,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: c.border)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: c.inkFaint, size: 19),
+            const SizedBox(width: 12),
+            if (constraints.maxWidth >= 520) ...[
+              SizedBox(
+                width: 180,
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 13.5, color: c.inkMuted),
+                ),
               ),
-            ),
-          ),
-        ],
+              Expanded(child: valueText),
+            ] else ...[
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 13.5, color: c.inkMuted),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(child: valueText),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -397,74 +414,97 @@ class ProfileBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 520;
+        final details = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 110,
-              decoration: BoxDecoration(
-                color: kBrandBlue,
-                borderRadius: BorderRadius.circular(12),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: c.ink,
+                height: 1.2,
               ),
             ),
-            Positioned(
-              left: 20,
-              bottom: -40,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: c.background,
-                  shape: BoxShape.circle,
-                ),
-                child: avatar,
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 13.5, color: c.inkMuted),
               ),
+            ],
+            if (caption.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12.5, color: c.inkFaint),
+              ),
+            ],
+          ],
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: compact ? 92 : 110,
+                  decoration: BoxDecoration(
+                    color: kBrandBlue,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                Positioned(
+                  left: compact ? 16 : 20,
+                  bottom: -40,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: c.background,
+                      shape: BoxShape.circle,
+                    ),
+                    child: avatar,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 48),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: compact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        details,
+                        if (action != null) ...[
+                          const SizedBox(height: 12),
+                          action!,
+                        ],
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: details),
+                        if (action != null) ...[
+                          const SizedBox(width: 12),
+                          action!,
+                        ],
+                      ],
+                    ),
             ),
           ],
-        ),
-        const SizedBox(height: 48),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: c.ink,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(fontSize: 13.5, color: c.inkMuted),
-                      ),
-                    ],
-                    if (caption.isNotEmpty) ...[
-                      const SizedBox(height: 1),
-                      Text(
-                        caption,
-                        style: TextStyle(fontSize: 12.5, color: c.inkFaint),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (action != null) ...[const SizedBox(width: 12), action!],
-            ],
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
