@@ -17,6 +17,7 @@ const Map<String, String> stringsEs = {
   'common.delete': 'Eliminar',
   'common.back': 'Volver',
   'common.retry': 'Reintentar',
+  'common.view_all': 'Ver todos',
   'common.loading': 'Cargando…',
   'common.error.connection':
       'No se pudo conectar con el servidor. Verifica tu conexión.',
@@ -44,6 +45,7 @@ const Map<String, String> stringsEs = {
 
   // Auth
   'auth.login.title': 'Encuentra tu siguiente oportunidad',
+  'auth.login.heading': 'Iniciar sesión',
   'auth.login.subtitle': 'Inicia sesión para revisar vacantes y tu avance.',
   'auth.register.title': 'Crea tu cuenta de postulante',
   'auth.register.subtitle': 'Completa tus datos para empezar a postular.',
@@ -56,7 +58,9 @@ const Map<String, String> stringsEs = {
   'auth.login': 'Iniciar sesión',
   'auth.register': 'Crear cuenta',
   'auth.have_account': 'Ya tengo una cuenta',
+  'auth.have_account.question': '¿Ya tienes cuenta?',
   'auth.create_account': 'Crear cuenta de postulante',
+  'auth.no_account': '¿Aún no tienes cuenta?',
   'auth.forgot': '¿Olvidaste tu contraseña?',
   'auth.email.invalid': 'Ingresa un correo válido.',
   'auth.name.required': 'Ingresa tu nombre.',
@@ -72,9 +76,15 @@ const Map<String, String> stringsEs = {
   'auth.company.action': 'Ir al portal de empresas',
   'auth.company.unavailable':
       'El portal de empresas no está configurado en este entorno.',
+  'auth.hero.title': 'Tu búsqueda laboral,\nen un solo lugar.',
+  'auth.hero.benefit.verified': 'Postula a vacantes verificadas en minutos.',
+  'auth.hero.benefit.progress': 'Sigue cada proceso con hitos y feedback.',
+  'auth.hero.benefit.contact': 'Conversa directamente con las empresas.',
+  'auth.hero.footer': 'Empresas verificadas publican vacantes cada semana.',
 
   // Recuperar contraseña
   'reset.title': 'Recuperar contraseña',
+  'reset.heading': '¿Olvidaste tu contraseña?',
   'reset.subtitle':
       'Ingresa el correo de tu cuenta y te enviaremos un código para restablecer tu contraseña.',
   'reset.send_code': 'Enviar código',
@@ -86,10 +96,18 @@ const Map<String, String> stringsEs = {
   'reset.submit': 'Restablecer contraseña',
   'reset.success': 'Contraseña restablecida. Ya puedes iniciar sesión.',
   'reset.step2.hint': 'Revisa tu correo e ingresa el código recibido.',
+  'reset.step2.title': 'Revisa tu correo',
+  'reset.back_login': 'Volver a iniciar sesión',
 
   // Inicio
   'home.greeting': 'Hola,',
   'home.subtitle': 'Este es el estado de tu búsqueda laboral hoy.',
+  'home.subtitle.date': 'Este es el estado de tu búsqueda laboral · {date}',
+  'home.active_processes': 'Procesos activos',
+  'home.notifications': 'Notificaciones',
+  'home.processes.empty': 'Tus procesos activos aparecerán aquí.',
+  'home.jobs_for_you': 'Vacantes para ti',
+  'home.jobs.empty': 'No hay nuevas vacantes sugeridas por ahora.',
   'home.applications': 'Postulaciones',
   'home.in_process': 'Activas',
   'home.news': 'Notificaciones recientes',
@@ -97,6 +115,8 @@ const Map<String, String> stringsEs = {
 
   // Vacantes
   'offers.title': 'Vacantes laborales',
+  'offers.subtitle': '{count} vacantes abiertas · actualizado hoy',
+  'offers.filter.all': 'Todas',
   'offers.results': 'resultados',
   'offers.result': 'resultado',
   'offers.empty.title': 'No hay vacantes disponibles',
@@ -111,6 +131,8 @@ const Map<String, String> stringsEs = {
   'offers.sent': 'Postulación enviada.',
   'offers.published': 'Publicada el',
   'offers.detail.title': 'Detalle de la vacante',
+  'offers.back': 'Volver a vacantes',
+  'offers.published.short': 'Publicada',
   'offers.description': 'Descripción de la vacante',
   'offers.requirements': 'Requisitos',
   'offers.desirable': 'Deseable',
@@ -126,6 +148,7 @@ const Map<String, String> stringsEs = {
   'company.about': 'Sobre la empresa',
   'company.openings': 'Vacantes abiertas',
   'company.no_openings': 'Esta empresa no tiene vacantes abiertas ahora.',
+  'company.about.empty': 'Esta empresa aún no ha añadido una descripción.',
 
   // Procesos
   'apps.title': 'Mis postulaciones',
@@ -136,6 +159,14 @@ const Map<String, String> stringsEs = {
   'apps.progress': 'AVANCE DEL PROCESO',
   'apps.feedback': 'ÚLTIMO FEEDBACK',
   'apps.open_chat': 'Abrir conversación',
+  'apps.filter.all': 'Todas',
+  'apps.filter.active': 'Activas',
+  'apps.filter.finished': 'Finalizadas',
+  'apps.filter.empty': 'No hay procesos en esta categoría',
+  'apps.no_updates': 'Sin novedades todavía',
+  'apps.last_update': 'Última novedad',
+  'apps.stage.sent': 'Enviada',
+  'apps.stage.result': 'Resultado',
 
   // Mensajes / chat
   'chat.title': 'Mensajes',
@@ -149,6 +180,7 @@ const Map<String, String> stringsEs = {
   'chat.search.empty.title': 'No encontramos conversaciones',
   'chat.search.empty.msg': 'Prueba con otro nombre de empresa o vacante.',
   'chat.retry.msg': 'Vuelve a intentarlo para cargar tus conversaciones.',
+  'chat.today': 'Hoy',
 
   // Progreso
   'metrics.title': 'Progreso',
@@ -161,6 +193,12 @@ const Map<String, String> stringsEs = {
   'metrics.success': 'Tasa de éxito',
   'metrics.success.sub':
       'Porcentaje de postulaciones en las que fuiste aceptado.',
+  'metrics.success.short': 'de éxito',
+  'metrics.success.caption':
+      '{accepted} de {total} postulaciones terminaron en una aceptación.',
+  'metrics.funnel': 'Embudo de postulación',
+  'metrics.funnel.caption':
+      'Las etapas reflejan hitos reales. {rejected} procesos terminaron en rechazo.',
   'metrics.achievements': 'Logros',
   'metrics.achievements.empty.title': 'Aún no tienes logros',
   'metrics.achievements.empty.msg':
@@ -200,6 +238,11 @@ const Map<String, String> stringsEs = {
   'profile.language': 'Idioma',
   'profile.level': 'Nivel (ej. Intermedio)',
   'profile.extra_title': 'Título',
+  'profile.preferences': 'Preferencias',
+  'profile.completion': 'Perfil completo al {percent}%',
+  'profile.pending': '{count} secciones pendientes',
+  'profile.completion.hint':
+      'Completa la información pendiente para destacar ante las empresas.',
 
   // Configuración
   'settings.title': 'Configuración',
@@ -213,6 +256,7 @@ const Map<String, String> stringsEs = {
   'settings.privacy.email.title': 'Mostrar mi correo a las empresas',
   'settings.privacy.email.subtitle':
       'Puedes ocultarlo sin afectar los mensajes dentro de LookUp.',
+  'notif.mark_read': 'Marcar leídas',
   'settings.security': 'Seguridad',
   'settings.change_password': 'Cambiar contraseña',
   'settings.password.current': 'Contraseña actual',
@@ -297,6 +341,7 @@ const Map<String, String> stringsEn = {
   'common.delete': 'Delete',
   'common.back': 'Back',
   'common.retry': 'Retry',
+  'common.view_all': 'View all',
   'common.loading': 'Loading…',
   'common.error.connection':
       'Could not reach the server. Check your connection.',
@@ -322,6 +367,7 @@ const Map<String, String> stringsEn = {
   'nav.logout': 'Sign out',
 
   'auth.login.title': 'Find your next opportunity',
+  'auth.login.heading': 'Sign in',
   'auth.login.subtitle': 'Sign in to review vacancies and your progress.',
   'auth.register.title': 'Create your applicant account',
   'auth.register.subtitle': 'Fill in your details to start applying.',
@@ -334,7 +380,9 @@ const Map<String, String> stringsEn = {
   'auth.login': 'Sign in',
   'auth.register': 'Create account',
   'auth.have_account': 'I already have an account',
+  'auth.have_account.question': 'Already have an account?',
   'auth.create_account': 'Create applicant account',
+  'auth.no_account': 'Don’t have an account yet?',
   'auth.forgot': 'Forgot your password?',
   'auth.email.invalid': 'Enter a valid email.',
   'auth.name.required': 'Enter your name.',
@@ -350,8 +398,15 @@ const Map<String, String> stringsEn = {
   'auth.company.action': 'Go to the company portal',
   'auth.company.unavailable':
       'The company portal is not configured in this environment.',
+  'auth.hero.title': 'Your job search,\nall in one place.',
+  'auth.hero.benefit.verified': 'Apply to verified vacancies in minutes.',
+  'auth.hero.benefit.progress':
+      'Follow every process with milestones and feedback.',
+  'auth.hero.benefit.contact': 'Talk directly with companies.',
+  'auth.hero.footer': 'Verified companies publish vacancies every week.',
 
   'reset.title': 'Reset password',
+  'reset.heading': 'Forgot your password?',
   'reset.subtitle':
       'Enter your account email and we will send you a code to reset your password.',
   'reset.send_code': 'Send code',
@@ -363,15 +418,25 @@ const Map<String, String> stringsEn = {
   'reset.submit': 'Reset password',
   'reset.success': 'Password reset. You can now sign in.',
   'reset.step2.hint': 'Check your email and enter the received code.',
+  'reset.step2.title': 'Check your email',
+  'reset.back_login': 'Back to sign in',
 
   'home.greeting': 'Hi,',
   'home.subtitle': 'This is the state of your job search today.',
+  'home.subtitle.date': 'This is the state of your job search · {date}',
+  'home.active_processes': 'Active processes',
+  'home.notifications': 'Notifications',
+  'home.processes.empty': 'Your active processes will appear here.',
+  'home.jobs_for_you': 'Vacancies for you',
+  'home.jobs.empty': 'There are no new suggested vacancies right now.',
   'home.applications': 'Applications',
   'home.in_process': 'Active',
   'home.news': 'Recent notifications',
   'home.news.all': 'See all',
 
   'offers.title': 'Vacancies',
+  'offers.subtitle': '{count} open vacancies · updated today',
+  'offers.filter.all': 'All',
   'offers.results': 'results',
   'offers.result': 'result',
   'offers.empty.title': 'No vacancies available',
@@ -385,6 +450,8 @@ const Map<String, String> stringsEn = {
   'offers.sent': 'Application sent.',
   'offers.published': 'Published on',
   'offers.detail.title': 'Vacancy details',
+  'offers.back': 'Back to vacancies',
+  'offers.published.short': 'Published',
   'offers.description': 'Vacancy description',
   'offers.requirements': 'Requirements',
   'offers.desirable': 'Nice to have',
@@ -399,6 +466,7 @@ const Map<String, String> stringsEn = {
   'company.about': 'About the company',
   'company.openings': 'Open vacancies',
   'company.no_openings': 'This company has no open vacancies right now.',
+  'company.about.empty': 'This company has not added a description yet.',
 
   'apps.title': 'My applications',
   'apps.empty.title': "You haven't applied yet",
@@ -408,6 +476,14 @@ const Map<String, String> stringsEn = {
   'apps.progress': 'PROCESS TIMELINE',
   'apps.feedback': 'LATEST FEEDBACK',
   'apps.open_chat': 'Open conversation',
+  'apps.filter.all': 'All',
+  'apps.filter.active': 'Active',
+  'apps.filter.finished': 'Finished',
+  'apps.filter.empty': 'There are no processes in this category',
+  'apps.no_updates': 'No updates yet',
+  'apps.last_update': 'Latest update',
+  'apps.stage.sent': 'Sent',
+  'apps.stage.result': 'Result',
 
   'chat.title': 'Messages',
   'chat.empty.title': 'No messages yet',
@@ -420,6 +496,7 @@ const Map<String, String> stringsEn = {
   'chat.search.empty.title': 'No conversations found',
   'chat.search.empty.msg': 'Try another company or vacancy.',
   'chat.retry.msg': 'Try again to load your conversations.',
+  'chat.today': 'Today',
 
   'metrics.title': 'Progress',
   'metrics.header': 'Your process at a glance',
@@ -430,6 +507,12 @@ const Map<String, String> stringsEn = {
   'metrics.rejections': 'Rejections',
   'metrics.success': 'Success rate',
   'metrics.success.sub': 'Share of applications where you were accepted.',
+  'metrics.success.short': 'success',
+  'metrics.success.caption':
+      '{accepted} of {total} applications ended in an acceptance.',
+  'metrics.funnel': 'Application funnel',
+  'metrics.funnel.caption':
+      'Stages reflect real milestones. {rejected} processes ended in rejection.',
   'metrics.achievements': 'Achievements',
   'metrics.achievements.empty.title': 'No achievements yet',
   'metrics.achievements.empty.msg':
@@ -468,6 +551,11 @@ const Map<String, String> stringsEn = {
   'profile.language': 'Language',
   'profile.level': 'Level (e.g. Intermediate)',
   'profile.extra_title': 'Title',
+  'profile.preferences': 'Preferences',
+  'profile.completion': 'Profile {percent}% complete',
+  'profile.pending': '{count} sections pending',
+  'profile.completion.hint':
+      'Complete the missing information to stand out to companies.',
 
   'settings.title': 'Settings',
   'settings.appearance': 'Appearance',
@@ -480,6 +568,7 @@ const Map<String, String> stringsEn = {
   'settings.privacy.email.title': 'Show my email to companies',
   'settings.privacy.email.subtitle':
       'You can hide it without affecting messages inside LookUp.',
+  'notif.mark_read': 'Mark as read',
   'settings.security': 'Security',
   'settings.change_password': 'Change password',
   'settings.password.current': 'Current password',

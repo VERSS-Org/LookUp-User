@@ -16,6 +16,7 @@ class LookUpDataService with ChangeNotifier {
   final Map<String, List<Map<String, dynamic>>> _threads = {};
   Map<String, dynamic>? _metrics;
   List<Map<String, dynamic>> _achievements = [];
+  String? _achievementsError;
   List<Map<String, dynamic>> _events = [];
   String _searchQuery = '';
   final Map<String, List<Map<String, dynamic>>> _companySearchCache = {};
@@ -30,6 +31,7 @@ class LookUpDataService with ChangeNotifier {
   List<Map<String, dynamic>> get inbox => _inbox;
   Map<String, dynamic>? get metrics => _metrics;
   List<Map<String, dynamic>> get achievements => _achievements;
+  String? get achievementsError => _achievementsError;
   List<Map<String, dynamic>> get events => _events;
   String get searchQuery => _searchQuery;
   int get unseenNotifications => _unseenNotifications;
@@ -55,6 +57,7 @@ class LookUpDataService with ChangeNotifier {
     _threads.clear();
     _metrics = null;
     _achievements = [];
+    _achievementsError = null;
     _events = [];
     _searchQuery = '';
     _companySearchCache.clear();
@@ -106,37 +109,22 @@ class LookUpDataService with ChangeNotifier {
 
   /// Trae el detalle completo de una vacante (incluye requisitos actualizados).
   Future<Map<String, dynamic>?> fetchJobDetail(String puestoId) async {
-    try {
-      return asMap(await _api.get('puesto/$puestoId'));
-    } catch (e) {
-      debugPrint('Error fetching job detail: $e');
-      return null;
-    }
+    return asMap(await _api.get('puesto/$puestoId'));
   }
 
   /// Perfil publico de una cuenta (empresa o postulante).
   Future<Map<String, dynamic>?> fetchCuenta(String cuentaId) async {
-    try {
-      return asMap(await _api.get('iam/cuenta/$cuentaId'));
-    } catch (e) {
-      debugPrint('Error fetching cuenta: $e');
-      return null;
-    }
+    return asMap(await _api.get('iam/cuenta/$cuentaId'));
   }
 
   /// Vacantes abiertas de una empresa concreta.
   Future<List<Map<String, dynamic>>> fetchJobsByCompany(
     String empresaId,
   ) async {
-    try {
-      final response = await _api.get(
-        'puesto/?empresa_id=$empresaId&estado=abierto',
-      );
-      return asMapList(response);
-    } catch (e) {
-      debugPrint('Error fetching company jobs: $e');
-      return [];
-    }
+    final response = await _api.get(
+      'puesto/?empresa_id=$empresaId&estado=abierto',
+    );
+    return asMapList(response);
   }
 
   Future<void> fetchApplications(String cuentaId, {bool notify = true}) async {
@@ -155,16 +143,20 @@ class LookUpDataService with ChangeNotifier {
     final generation = _generation;
     final metrics = asMap(await _api.get('metricas/resumen/$cuentaId'));
     if (generation != _generation) return;
-    List<Map<String, dynamic>> achievements;
     try {
-      achievements = asMapList(await _api.get('metricas/logros/$cuentaId'));
-    } catch (e) {
-      debugPrint('Error fetching achievements: $e');
-      achievements = [];
+      final achievements = asMapList(
+        await _api.get('metricas/logros/$cuentaId'),
+      );
+      if (generation != _generation) return;
+      _achievements = achievements;
+      _achievementsError = null;
+    } catch (error) {
+      debugPrint('Error fetching achievements: $error');
+      if (generation != _generation) return;
+      _achievementsError = error.toString();
     }
     if (generation != _generation) return;
     _metrics = metrics;
-    _achievements = achievements;
     if (notify) notifyListeners();
   }
 
@@ -180,17 +172,9 @@ class LookUpDataService with ChangeNotifier {
 
   Future<void> fetchThread(String postulacionId, {bool notify = true}) async {
     final generation = _generation;
-    try {
-      final response = await _api.get(
-        'contacto/?postulacion_id=$postulacionId',
-      );
-      if (generation != _generation) return;
-      _threads[postulacionId] = asMapList(response);
-    } catch (e) {
-      debugPrint('Error fetching thread: $e');
-      if (generation != _generation) return;
-      _threads.putIfAbsent(postulacionId, () => <Map<String, dynamic>>[]);
-    }
+    final response = await _api.get('contacto/?postulacion_id=$postulacionId');
+    if (generation != _generation) return;
+    _threads[postulacionId] = asMapList(response);
     if (notify) notifyListeners();
   }
 
@@ -301,13 +285,7 @@ class LookUpDataService with ChangeNotifier {
 
   Future<void> fetchEvents({bool notify = true}) async {
     final generation = _generation;
-    List<Map<String, dynamic>> events;
-    try {
-      events = asMapList(await _api.get('postulacion/eventos'));
-    } catch (e) {
-      debugPrint('Error fetching events: $e');
-      events = [];
-    }
+    final events = asMapList(await _api.get('postulacion/eventos'));
     if (generation != _generation) return;
     final unseen = await _readUnseenNotifications(events, generation);
     if (generation != _generation) return;
@@ -328,7 +306,7 @@ class LookUpDataService with ChangeNotifier {
         .length;
   }
 
-  /// Marca las notificaciones actuales como vistas (al abrir la campana).
+  /// Marca las notificaciones actuales cuando el usuario elige leerlas.
   Future<void> markNotificationsSeen() async {
     final generation = _generation;
     if (_events.isEmpty && _unseenNotifications == 0) return;
@@ -362,19 +340,14 @@ class LookUpDataService with ChangeNotifier {
     if (cached != null) return cached;
     final generation = _generation;
 
-    try {
-      final q = Uri.encodeQueryComponent(query.trim());
-      final results = asMapList(await _api.get('iam/empresas?q=$q'));
-      if (generation != _generation) return [];
-      if (_companySearchCache.length >= 20) {
-        _companySearchCache.remove(_companySearchCache.keys.first);
-      }
-      _companySearchCache[normalized] = results;
-      return results;
-    } catch (e) {
-      debugPrint('Error searching companies: $e');
-      return [];
+    final q = Uri.encodeQueryComponent(query.trim());
+    final results = asMapList(await _api.get('iam/empresas?q=$q'));
+    if (generation != _generation) return [];
+    if (_companySearchCache.length >= 20) {
+      _companySearchCache.remove(_companySearchCache.keys.first);
     }
+    _companySearchCache[normalized] = results;
+    return results;
   }
 
   // ---- Retiro de postulacion ------------------------------------------------

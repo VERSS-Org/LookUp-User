@@ -12,46 +12,27 @@ import 'package:lookup_user/src/utils/formatters.dart';
 import 'package:lookup_user/src/widgets/common.dart';
 import 'package:lookup_user/src/widgets/photo_cropper.dart';
 
-/// Perfil del postulante: datos, perfil profesional extendido, apariencia,
-/// idioma y seguridad.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, this.embedded = false});
 
-  /// true cuando vive dentro del shell web (sin flecha de volver).
   final bool embedded;
 
-  Map<String, dynamic> _perfilDe(Map<String, dynamic> profile) {
+  Map<String, dynamic> _profileDetails(Map<String, dynamic> profile) {
     final raw = profile['perfil'];
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    return <String, dynamic>{};
+    return raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
   }
 
-  String _valorPerfil(Object? raw, String fallback) {
-    final value = raw?.toString().trim() ?? '';
-    return value.isEmpty ? fallback : value;
-  }
-
-  void _editarDatosGenerales(
+  Future<void> _saveDetails(
     BuildContext context,
-    Map<String, dynamic> profile,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => EditProfileDialog(profile: profile),
-    );
-  }
-
-  Future<void> _guardarPerfil(
-    BuildContext context,
-    Map<String, dynamic> perfil,
+    Map<String, dynamic> details,
   ) async {
     try {
-      await context.read<AuthService>().updateProfile({'perfil': perfil});
-    } catch (e) {
+      await context.read<AuthService>().updateProfile({'perfil': details});
+    } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(error.toString()),
             backgroundColor: context.colors.danger,
           ),
         );
@@ -66,397 +47,298 @@ class ProfileScreen extends StatelessWidget {
     final localeController = context.watch<LocaleController>();
     final c = context.colors;
     final profile = auth.profile ?? const <String, dynamic>{};
-    final perfil = _perfilDe(profile);
-    final nombre = _valorPerfil(
-      profile['nombre_completo'],
-      context.t('common.applicant'),
+    final details = _profileDetails(profile);
+    final name =
+        profile['nombre_completo']?.toString().trim().isNotEmpty == true
+        ? profile['nombre_completo'].toString().trim()
+        : context.t('common.applicant');
+    final about = details['descripcion']?.toString().trim() ?? '';
+
+    final leftColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: context.t('profile.about'),
+          actionLabel: context.t('common.edit'),
+          onAction: () => _editAbout(context, details, about),
+        ),
+        Text(
+          about.isEmpty ? context.t('profile.about.hint') : about,
+          style: TextStyle(
+            color: about.isEmpty ? c.inkFaint : c.ink,
+            fontSize: 12.5,
+            height: 1.55,
+            fontStyle: about.isEmpty ? FontStyle.italic : null,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _ProfileEntrySection(
+          title: context.t('profile.experience'),
+          icon: Icons.work_outline,
+          entries: asMapList(details['experiencia']),
+          titleKey: 'puesto',
+          subtitleKeys: const ['organizacion', 'periodo'],
+          bodyKey: 'descripcion',
+          onAdd: () => _addEntry(
+            context,
+            details,
+            'experiencia',
+            context.tr('profile.add_experience'),
+            [
+              ('puesto', context.tr('profile.position'), true),
+              ('organizacion', context.tr('profile.organization'), true),
+              ('periodo', context.tr('profile.period'), false),
+              ('descripcion', context.tr('profile.description'), false),
+            ],
+          ),
+          onDelete: (index) =>
+              _deleteEntry(context, details, 'experiencia', index),
+        ),
+        _ProfileEntrySection(
+          title: context.t('profile.education'),
+          icon: Icons.school_outlined,
+          entries: asMapList(details['educacion']),
+          titleKey: 'titulo',
+          subtitleKeys: const ['institucion', 'periodo'],
+          onAdd: () => _addEntry(
+            context,
+            details,
+            'educacion',
+            context.tr('profile.add_education'),
+            [
+              ('titulo', context.tr('profile.degree'), true),
+              ('institucion', context.tr('profile.institution'), true),
+              ('periodo', context.tr('profile.period'), false),
+            ],
+          ),
+          onDelete: (index) =>
+              _deleteEntry(context, details, 'educacion', index),
+        ),
+        _ProfileEntrySection(
+          title: context.t('profile.certificates'),
+          icon: Icons.verified_outlined,
+          entries: asMapList(details['certificados']),
+          titleKey: 'nombre',
+          subtitleKeys: const ['anio'],
+          onAdd: () => _addEntry(
+            context,
+            details,
+            'certificados',
+            context.tr('profile.add_certificate'),
+            [
+              ('nombre', context.tr('profile.cert_name'), true),
+              ('anio', context.tr('profile.year'), false),
+            ],
+          ),
+          onDelete: (index) =>
+              _deleteEntry(context, details, 'certificados', index),
+        ),
+        _ProfileEntrySection(
+          title: context.t('profile.extras'),
+          icon: Icons.star_outline,
+          entries: asMapList(details['extras']),
+          titleKey: 'titulo',
+          subtitleKeys: const [],
+          bodyKey: 'descripcion',
+          onAdd: () => _addEntry(
+            context,
+            details,
+            'extras',
+            context.tr('profile.add_extra'),
+            [
+              ('titulo', context.tr('profile.extra_title'), true),
+              ('descripcion', context.tr('profile.description'), false),
+            ],
+          ),
+          onDelete: (index) => _deleteEntry(context, details, 'extras', index),
+        ),
+      ],
     );
-    final descripcion = perfil['descripcion']?.toString() ?? '';
+
+    final rightColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: context.t('profile.skills'),
+          actionLabel: context.t('common.add'),
+          onAction: () => _addSkill(context, details),
+        ),
+        _SkillsWrap(
+          skills: List<dynamic>.from(
+            (details['habilidades'] as List?) ?? const [],
+          ),
+          onDelete: (index) {
+            final skills = List<dynamic>.from(
+              (details['habilidades'] as List?) ?? const [],
+            )..removeAt(index);
+            _saveDetails(context, {...details, 'habilidades': skills});
+          },
+        ),
+        const SizedBox(height: 20),
+        _ProfileEntrySection(
+          title: context.t('profile.languages'),
+          icon: Icons.translate_outlined,
+          entries: asMapList(details['idiomas']),
+          titleKey: 'idioma',
+          subtitleKeys: const ['nivel'],
+          onAdd: () => _addEntry(
+            context,
+            details,
+            'idiomas',
+            context.tr('profile.add_language'),
+            [
+              ('idioma', context.tr('profile.language'), true),
+              ('nivel', context.tr('profile.level'), false),
+            ],
+          ),
+          onDelete: (index) => _deleteEntry(context, details, 'idiomas', index),
+        ),
+        SectionHeader(title: context.t('settings.privacy')),
+        SwitchListTile.adaptive(
+          key: const Key('profile-show-email-switch'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            context.t('settings.privacy.email.title'),
+            style: TextStyle(
+              color: c.ink,
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5,
+            ),
+          ),
+          subtitle: Text(
+            context.t('settings.privacy.email.subtitle'),
+            style: TextStyle(color: c.inkMuted, fontSize: 12),
+          ),
+          value: details['mostrar_email'] != false,
+          onChanged: (value) =>
+              _saveDetails(context, {...details, 'mostrar_email': value}),
+        ),
+        const SizedBox(height: 17),
+        SectionHeader(title: context.t('profile.preferences')),
+        Text(
+          context.t('settings.theme'),
+          style: TextStyle(color: c.inkMuted, fontSize: 12),
+        ),
+        const SizedBox(height: 7),
+        SegmentedButton<ThemeMode>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: ThemeMode.light,
+              icon: const Icon(Icons.light_mode_outlined, size: 14),
+              label: Text(context.t('settings.theme.light')),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              icon: const Icon(Icons.dark_mode_outlined, size: 14),
+              label: Text(context.t('settings.theme.dark')),
+            ),
+            ButtonSegment(
+              value: ThemeMode.system,
+              icon: const Icon(Icons.brightness_auto_outlined, size: 14),
+              label: Text(context.t('settings.theme.system')),
+            ),
+          ],
+          selected: {themeController.mode},
+          onSelectionChanged: (selection) =>
+              themeController.setMode(selection.first),
+        ),
+        const SizedBox(height: 13),
+        Text(
+          context.t('settings.language'),
+          style: TextStyle(color: c.inkMuted, fontSize: 12),
+        ),
+        const SizedBox(height: 7),
+        SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 'es', label: Text('Español')),
+            ButtonSegment(value: 'en', label: Text('English')),
+          ],
+          selected: {localeController.language},
+          onSelectionChanged: (selection) =>
+              localeController.setLanguage(selection.first),
+        ),
+        const SizedBox(height: 18),
+        SectionHeader(title: context.t('settings.security')),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.lock_outline, size: 16),
+          label: Text(context.t('settings.change_password')),
+          onPressed: () => showDialog(
+            context: context,
+            builder: (_) => const ChangePasswordDialog(),
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
       appBar: embedded ? null : AppBar(title: Text(context.t('profile.title'))),
-      // El scroll ocupa el viewport completo: en web la barra queda en el
-      // borde derecho de la ventana, aunque el contenido siga centrado.
-      body: ListView(
+      body: ViewportScrollPage(
         key: const Key('profile-page-scroll'),
-        padding: const EdgeInsets.fromLTRB(0, 16, 0, 32),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 820),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Cabecera estilo perfil profesional: banner + avatar superpuesto
-                    ProfileBanner(
-                      avatar: ProfileAvatar(
-                        fotoUrl: profile['foto_url']?.toString(),
-                        radius: 44,
-                        name: nombre,
-                      ),
-                      title: nombre,
-                      subtitle: [
-                        if ((profile['carrera']?.toString().trim() ?? '')
-                            .isNotEmpty)
-                          profile['carrera'].toString().trim(),
-                        if ((profile['ciudad']?.toString().trim() ?? '')
-                            .isNotEmpty)
-                          profile['ciudad'].toString().trim(),
-                      ].join(' · '),
-                      caption: profile['email']?.toString().trim() ?? '',
-                      action: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            key: const Key('profile-change-photo'),
-                            icon: const Icon(
-                              Icons.photo_camera_outlined,
-                              size: 17,
-                            ),
-                            label: Text(context.t('profile.change_photo')),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 36),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                            ),
-                            onPressed: () => showDialog(
-                              context: context,
-                              builder: (_) => const PhotoUploadDialog(),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.outlined(
-                            key: const Key('profile-edit-general'),
-                            tooltip: context.t('profile.edit'),
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            style: IconButton.styleFrom(
-                              minimumSize: const Size(36, 36),
-                              fixedSize: const Size(36, 36),
-                              padding: const EdgeInsets.all(8),
-                              side: BorderSide(color: c.border),
-                            ),
-                            onPressed: () =>
-                                _editarDatosGenerales(context, profile),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    // Sobre mí
-                    SectionHeader(
-                      title: context.t('profile.about'),
-                      actionLabel: context.t('common.edit'),
-                      onAction: () =>
-                          _editarDescripcion(context, perfil, descripcion),
-                    ),
-                    Text(
-                      descripcion.isEmpty
-                          ? context.t('profile.about.hint')
-                          : descripcion,
-                      style: TextStyle(
-                        color: descripcion.isEmpty ? c.inkFaint : c.ink,
-                        height: 1.5,
-                        fontSize: 14.5,
-                        fontStyle: descripcion.isEmpty
-                            ? FontStyle.italic
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    // Datos personales
-                    SectionHeader(title: context.t('profile.personal')),
-                    InfoRow(
-                      icon: Icons.school_outlined,
-                      label: context.t('auth.career'),
-                      value: _valorPerfil(
-                        profile['carrera'],
-                        context.t('common.not_specified_f'),
-                      ),
-                    ),
-                    InfoRow(
-                      icon: Icons.phone_outlined,
-                      label: context.t('auth.phone'),
-                      value: _valorPerfil(
-                        profile['telefono'],
-                        context.t('common.not_specified'),
-                      ),
-                    ),
-                    InfoRow(
-                      icon: Icons.location_on_outlined,
-                      label: context.t('auth.city'),
-                      value: _valorPerfil(
-                        profile['ciudad'],
-                        context.t('common.not_specified_f'),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Secciones profesionales
-                    _EntryListSection(
-                      title: context.t('profile.experience'),
-                      icon: Icons.work_outline,
-                      entries: asMapList(perfil['experiencia']),
-                      titleKey: 'puesto',
-                      subtitleKeys: const ['organizacion', 'periodo'],
-                      bodyKey: 'descripcion',
-                      onAdd: () => _agregarEntrada(
-                        context,
-                        perfil,
-                        'experiencia',
-                        [
-                          ('puesto', context.tr('profile.position'), true),
-                          (
-                            'organizacion',
-                            context.tr('profile.organization'),
-                            true,
-                          ),
-                          ('periodo', context.tr('profile.period'), false),
-                          (
-                            'descripcion',
-                            context.tr('profile.description'),
-                            false,
-                          ),
-                        ],
-                        context.tr('profile.add_experience'),
-                      ),
-                      onDelete: (index) => _eliminarEntrada(
-                        context,
-                        perfil,
-                        'experiencia',
-                        index,
-                      ),
-                    ),
-                    _EntryListSection(
-                      title: context.t('profile.education'),
-                      icon: Icons.school_outlined,
-                      entries: asMapList(perfil['educacion']),
-                      titleKey: 'titulo',
-                      subtitleKeys: const ['institucion', 'periodo'],
-                      onAdd: () => _agregarEntrada(
-                        context,
-                        perfil,
-                        'educacion',
-                        [
-                          ('titulo', context.tr('profile.degree'), true),
-                          (
-                            'institucion',
-                            context.tr('profile.institution'),
-                            true,
-                          ),
-                          ('periodo', context.tr('profile.period'), false),
-                        ],
-                        context.tr('profile.add_education'),
-                      ),
-                      onDelete: (index) =>
-                          _eliminarEntrada(context, perfil, 'educacion', index),
-                    ),
-                    _EntryListSection(
-                      title: context.t('profile.certificates'),
-                      icon: Icons.verified_outlined,
-                      entries: asMapList(perfil['certificados']),
-                      titleKey: 'nombre',
-                      subtitleKeys: const ['anio'],
-                      onAdd: () => _agregarEntrada(
-                        context,
-                        perfil,
-                        'certificados',
-                        [
-                          ('nombre', context.tr('profile.cert_name'), true),
-                          ('anio', context.tr('profile.year'), false),
-                        ],
-                        context.tr('profile.add_certificate'),
-                      ),
-                      onDelete: (index) => _eliminarEntrada(
-                        context,
-                        perfil,
-                        'certificados',
-                        index,
-                      ),
-                    ),
-                    // Habilidades (chips)
-                    SectionHeader(
-                      title: context.t('profile.skills'),
-                      actionLabel: context.t('common.add'),
-                      onAction: () => _agregarHabilidad(context, perfil),
-                    ),
-                    if ((perfil['habilidades'] as List?)?.isEmpty ?? true)
-                      Text(
-                        context.t('profile.empty_section'),
-                        style: TextStyle(
-                          color: c.inkFaint,
-                          fontSize: 13.5,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (
-                            var i = 0;
-                            i < (perfil['habilidades'] as List).length;
-                            i++
-                          )
-                            Chip(
-                              label: Text(
-                                (perfil['habilidades'] as List)[i].toString(),
-                              ),
-                              onDeleted: () {
-                                final lista = List<dynamic>.from(
-                                  perfil['habilidades'] as List,
-                                )..removeAt(i);
-                                _guardarPerfil(context, {
-                                  ...perfil,
-                                  'habilidades': lista,
-                                });
-                              },
-                            ),
-                        ],
-                      ),
-                    const SizedBox(height: 20),
-                    _EntryListSection(
-                      title: context.t('profile.languages'),
-                      icon: Icons.translate_outlined,
-                      entries: asMapList(perfil['idiomas']),
-                      titleKey: 'idioma',
-                      subtitleKeys: const ['nivel'],
-                      onAdd: () => _agregarEntrada(
-                        context,
-                        perfil,
-                        'idiomas',
-                        [
-                          ('idioma', context.tr('profile.language'), true),
-                          ('nivel', context.tr('profile.level'), false),
-                        ],
-                        context.tr('profile.add_language'),
-                      ),
-                      onDelete: (index) =>
-                          _eliminarEntrada(context, perfil, 'idiomas', index),
-                    ),
-                    _EntryListSection(
-                      title: context.t('profile.extras'),
-                      subtitle: context.t('profile.extras.hint'),
-                      icon: Icons.star_outline,
-                      entries: asMapList(perfil['extras']),
-                      titleKey: 'titulo',
-                      subtitleKeys: const [],
-                      bodyKey: 'descripcion',
-                      onAdd: () => _agregarEntrada(context, perfil, 'extras', [
-                        ('titulo', context.tr('profile.extra_title'), true),
-                        (
-                          'descripcion',
-                          context.tr('profile.description'),
-                          false,
-                        ),
-                      ], context.tr('profile.add_extra')),
-                      onDelete: (index) =>
-                          _eliminarEntrada(context, perfil, 'extras', index),
-                    ),
-                    const SizedBox(height: 10),
-                    // Privacidad
-                    SectionHeader(title: context.t('settings.privacy')),
-                    SwitchListTile.adaptive(
-                      key: const Key('profile-show-email-switch'),
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Icon(Icons.email_outlined, color: c.inkFaint),
-                      title: Text(
-                        context.t('settings.privacy.email.title'),
-                        style: TextStyle(
-                          color: c.ink,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14.5,
-                        ),
-                      ),
-                      subtitle: Text(
-                        context.t('settings.privacy.email.subtitle'),
-                        style: TextStyle(color: c.inkMuted, fontSize: 12.5),
-                      ),
-                      value: perfil['mostrar_email'] != false,
-                      onChanged: (value) => _guardarPerfil(context, {
-                        ...perfil,
-                        'mostrar_email': value,
-                      }),
-                    ),
-                    const SizedBox(height: 18),
-                    // Configuración
-                    SectionHeader(title: context.t('settings.title')),
-                    Text(
-                      context.t('settings.theme'),
-                      style: TextStyle(fontSize: 13.5, color: c.inkMuted),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text(context.t('settings.theme.light')),
-                          icon: const Icon(Icons.light_mode_outlined, size: 17),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text(context.t('settings.theme.dark')),
-                          icon: const Icon(Icons.dark_mode_outlined, size: 17),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text(context.t('settings.theme.system')),
-                          icon: const Icon(
-                            Icons.brightness_auto_outlined,
-                            size: 17,
-                          ),
-                        ),
-                      ],
-                      selected: {themeController.mode},
-                      onSelectionChanged: (selection) =>
-                          themeController.setMode(selection.first),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      context.t('settings.language'),
-                      style: TextStyle(fontSize: 13.5, color: c.inkMuted),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'es', label: Text('Español')),
-                        ButtonSegment(value: 'en', label: Text('English')),
-                      ],
-                      selected: {localeController.language},
-                      onSelectionChanged: (selection) =>
-                          localeController.setLanguage(selection.first),
-                    ),
-                    const SizedBox(height: 24),
-                    // Seguridad
-                    SectionHeader(title: context.t('settings.security')),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.lock_outline),
-                      label: Text(context.t('settings.change_password')),
-                      onPressed: () => showDialog(
-                        context: context,
-                        builder: (_) => const ChangePasswordDialog(),
-                      ),
-                    ),
-                  ],
-                ),
+        maxWidth: 980,
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 36),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ApplicantProfileHeader(
+              profile: profile,
+              name: name,
+              onChangePhoto: () => showDialog(
+                context: context,
+                builder: (_) => const PhotoUploadDialog(),
+              ),
+              onEdit: () => showDialog(
+                context: context,
+                builder: (_) => EditProfileDialog(profile: profile),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 18),
+            _ProfileCompletion(profile: profile, details: details),
+            const SizedBox(height: 20),
+            Divider(color: c.border, height: 1),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 760) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      leftColumn,
+                      Divider(color: c.border, height: 30),
+                      rightColumn,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 11, child: leftColumn),
+                    Container(
+                      width: 1,
+                      constraints: const BoxConstraints(minHeight: 540),
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      color: c.border,
+                    ),
+                    Expanded(flex: 9, child: rightColumn),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _editarDescripcion(
+  Future<void> _editAbout(
     BuildContext context,
-    Map<String, dynamic> perfil,
-    String actual,
+    Map<String, dynamic> details,
+    String current,
   ) async {
-    final controller = TextEditingController(text: actual);
-    final resultado = await showDialog<String>(
+    final controller = TextEditingController(text: current);
+    final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('profile.about')),
@@ -485,47 +367,48 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
-    if (resultado != null && context.mounted) {
-      await _guardarPerfil(context, {...perfil, 'descripcion': resultado});
+    controller.dispose();
+    if (value != null && context.mounted) {
+      await _saveDetails(context, {...details, 'descripcion': value});
     }
   }
 
-  Future<void> _agregarEntrada(
+  Future<void> _addEntry(
     BuildContext context,
-    Map<String, dynamic> perfil,
-    String seccion,
-    List<(String, String, bool)> campos,
-    String titulo,
+    Map<String, dynamic> details,
+    String section,
+    String title,
+    List<(String, String, bool)> fields,
   ) async {
-    final entrada = await showDialog<Map<String, String>>(
+    final entry = await showDialog<Map<String, String>>(
       context: context,
-      builder: (_) => _EntryDialog(titulo: titulo, campos: campos),
+      builder: (_) => _EntryDialog(title: title, fields: fields),
     );
-    if (entrada != null && context.mounted) {
-      final lista = List<dynamic>.from((perfil[seccion] as List?) ?? [])
-        ..add(entrada);
-      await _guardarPerfil(context, {...perfil, seccion: lista});
+    if (entry != null && context.mounted) {
+      final items = List<dynamic>.from((details[section] as List?) ?? [])
+        ..add(entry);
+      await _saveDetails(context, {...details, section: items});
     }
   }
 
-  Future<void> _eliminarEntrada(
+  Future<void> _deleteEntry(
     BuildContext context,
-    Map<String, dynamic> perfil,
-    String seccion,
+    Map<String, dynamic> details,
+    String section,
     int index,
   ) async {
-    final lista = List<dynamic>.from((perfil[seccion] as List?) ?? []);
-    if (index < 0 || index >= lista.length) return;
-    lista.removeAt(index);
-    await _guardarPerfil(context, {...perfil, seccion: lista});
+    final items = List<dynamic>.from((details[section] as List?) ?? []);
+    if (index < 0 || index >= items.length) return;
+    items.removeAt(index);
+    await _saveDetails(context, {...details, section: items});
   }
 
-  Future<void> _agregarHabilidad(
+  Future<void> _addSkill(
     BuildContext context,
-    Map<String, dynamic> perfil,
+    Map<String, dynamic> details,
   ) async {
     final controller = TextEditingController();
-    final valor = await showDialog<String>(
+    final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('profile.add_skill')),
@@ -533,7 +416,7 @@ class ProfileScreen extends StatelessWidget {
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(hintText: context.tr('profile.skill')),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+          onSubmitted: (text) => Navigator.pop(dialogContext, text.trim()),
         ),
         actions: [
           TextButton(
@@ -548,17 +431,279 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
-    if (valor != null && valor.isNotEmpty && context.mounted) {
-      final lista = List<dynamic>.from((perfil['habilidades'] as List?) ?? [])
-        ..add(valor);
-      await _guardarPerfil(context, {...perfil, 'habilidades': lista});
+    controller.dispose();
+    if (value != null && value.isNotEmpty && context.mounted) {
+      final skills = List<dynamic>.from((details['habilidades'] as List?) ?? [])
+        ..add(value);
+      await _saveDetails(context, {...details, 'habilidades': skills});
     }
   }
 }
 
-/// Sección con lista de entradas (experiencia, educación, etc.).
-class _EntryListSection extends StatelessWidget {
-  const _EntryListSection({
+class _ApplicantProfileHeader extends StatelessWidget {
+  const _ApplicantProfileHeader({
+    required this.profile,
+    required this.name,
+    required this.onChangePhoto,
+    required this.onEdit,
+  });
+
+  final Map<String, dynamic> profile;
+  final String name;
+  final VoidCallback onChangePhoto;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final subtitle = [
+      if ((profile['carrera']?.toString().trim() ?? '').isNotEmpty)
+        profile['carrera'].toString().trim(),
+      if ((profile['ciudad']?.toString().trim() ?? '').isNotEmpty)
+        profile['ciudad'].toString().trim(),
+    ].join(' · ');
+    final caption = [
+      if ((profile['email']?.toString().trim() ?? '').isNotEmpty)
+        profile['email'].toString().trim(),
+      if ((profile['telefono']?.toString().trim() ?? '').isNotEmpty)
+        profile['telefono'].toString().trim(),
+    ].join(' · ');
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 600;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                BrandGradientPanel(
+                  height: compact ? 94 : 112,
+                  showBottomLeftRing: false,
+                  padding: EdgeInsets.zero,
+                  child: const SizedBox.shrink(),
+                ),
+                Positioned(
+                  left: compact ? 16 : 24,
+                  bottom: -34,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: c.background,
+                      shape: BoxShape.circle,
+                    ),
+                    child: ProfileAvatar(
+                      fotoUrl: profile['foto_url']?.toString(),
+                      radius: 34,
+                      name: name,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 42),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: Theme.of(context).textTheme.titleLarge),
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          style: TextStyle(color: c.inkMuted, fontSize: 12),
+                        ),
+                      if (caption.isNotEmpty)
+                        Text(
+                          caption,
+                          maxLines: compact ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: c.inkFaint, fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (!compact)
+                  OutlinedButton.icon(
+                    key: const Key('profile-change-photo'),
+                    onPressed: onChangePhoto,
+                    icon: const Icon(Icons.photo_camera_outlined, size: 15),
+                    label: Text(context.t('profile.change_photo')),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                    ),
+                  ),
+                if (!compact) ...[
+                  const SizedBox(width: 7),
+                  IconButton.outlined(
+                    key: const Key('profile-edit-general'),
+                    tooltip: context.t('profile.edit'),
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(36, 36),
+                      fixedSize: const Size(36, 36),
+                      side: BorderSide(color: c.border),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (compact) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const Key('profile-change-photo'),
+                      onPressed: onChangePhoto,
+                      icon: const Icon(Icons.photo_camera_outlined, size: 15),
+                      label: Text(context.t('profile.change_photo')),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    IconButton.outlined(
+                      key: const Key('profile-edit-general'),
+                      tooltip: context.t('profile.edit'),
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(36, 36),
+                        fixedSize: const Size(36, 36),
+                        side: BorderSide(color: c.border),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ProfileCompletion extends StatelessWidget {
+  const _ProfileCompletion({required this.profile, required this.details});
+
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic> details;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    bool text(Object? value) => value?.toString().trim().isNotEmpty == true;
+    bool list(Object? value) => value is List && value.isNotEmpty;
+    final checks = [
+      text(profile['foto_url']),
+      text(profile['nombre_completo']),
+      text(profile['email']),
+      text(profile['carrera']),
+      text(profile['telefono']),
+      text(profile['ciudad']),
+      text(details['descripcion']),
+      list(details['experiencia']),
+      list(details['educacion']),
+      list(details['certificados']),
+      list(details['habilidades']),
+      list(details['idiomas']),
+      list(details['extras']),
+    ];
+    final completed = checks.where((value) => value).length;
+    final pending = checks.length - completed;
+    final progress = completed / checks.length;
+    final percent = (progress * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                context
+                    .t('profile.completion')
+                    .replaceAll('{percent}', '$percent'),
+                style: TextStyle(
+                  color: c.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Text(
+              context.t('profile.pending').replaceAll('{count}', '$pending'),
+              style: TextStyle(color: c.inkFaint, fontSize: 12),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: LinearProgressIndicator(
+            key: const Key('profile-completion-progress'),
+            minHeight: 6,
+            value: progress,
+            backgroundColor: c.surfaceAlt,
+            color: c.accent,
+          ),
+        ),
+        if (pending > 0) ...[
+          const SizedBox(height: 7),
+          Text(
+            context.t('profile.completion.hint'),
+            style: TextStyle(color: c.inkMuted, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SkillsWrap extends StatelessWidget {
+  const _SkillsWrap({required this.skills, required this.onDelete});
+
+  final List<dynamic> skills;
+  final ValueChanged<int> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (skills.isEmpty) {
+      return Text(
+        context.t('profile.empty_section'),
+        style: TextStyle(
+          color: context.colors.inkFaint,
+          fontSize: 12,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (var index = 0; index < skills.length; index++)
+          Chip(
+            label: Text(skills[index].toString()),
+            deleteIcon: const Icon(Icons.close, size: 13),
+            onDeleted: () => onDelete(index),
+          ),
+      ],
+    );
+  }
+}
+
+class _ProfileEntrySection extends StatelessWidget {
+  const _ProfileEntrySection({
     required this.title,
     required this.icon,
     required this.entries,
@@ -567,11 +712,9 @@ class _EntryListSection extends StatelessWidget {
     required this.onAdd,
     required this.onDelete,
     this.bodyKey,
-    this.subtitle,
   });
 
   final String title;
-  final String? subtitle;
   final IconData icon;
   final List<Map<String, dynamic>> entries;
   final String titleKey;
@@ -584,50 +727,42 @@ class _EntryListSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
           title: title,
           actionLabel: context.t('common.add'),
           onAction: onAdd,
         ),
-        if (subtitle != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              subtitle!,
-              style: TextStyle(color: c.inkFaint, fontSize: 12.5),
-            ),
-          ),
         if (entries.isEmpty)
           Text(
             context.t('profile.empty_section'),
             style: TextStyle(
               color: c.inkFaint,
-              fontSize: 13.5,
+              fontSize: 12,
               fontStyle: FontStyle.italic,
             ),
           )
         else
-          ...List.generate(entries.length, (i) {
-            final entry = entries[i];
-            final sub = subtitleKeys
-                .map((k) => entry[k]?.toString() ?? '')
-                .where((v) => v.isNotEmpty)
+          ...List.generate(entries.length, (index) {
+            final entry = entries[index];
+            final subtitle = subtitleKeys
+                .map((key) => entry[key]?.toString().trim() ?? '')
+                .where((value) => value.isNotEmpty)
                 .join(' · ');
             final body = bodyKey == null
                 ? ''
-                : (entry[bodyKey!]?.toString() ?? '');
+                : entry[bodyKey!]?.toString().trim() ?? '';
             return Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 9),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: c.border)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 19, color: c.inkFaint),
-                  const SizedBox(width: 12),
+                  Icon(icon, size: 16, color: c.inkFaint),
+                  const SizedBox(width: 9),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,24 +770,26 @@ class _EntryListSection extends StatelessWidget {
                         Text(
                           entry[titleKey]?.toString() ?? '—',
                           style: TextStyle(
-                            fontWeight: FontWeight.w600,
                             color: c.ink,
-                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
-                        if (sub.isNotEmpty)
+                        if (subtitle.isNotEmpty)
                           Text(
-                            sub,
-                            style: TextStyle(color: c.inkMuted, fontSize: 13),
+                            subtitle,
+                            style: TextStyle(color: c.inkMuted, fontSize: 12),
                           ),
                         if (body.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               body,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: c.inkMuted,
-                                fontSize: 13,
+                                fontSize: 12,
                                 height: 1.4,
                               ),
                             ),
@@ -662,31 +799,25 @@ class _EntryListSection extends StatelessWidget {
                   ),
                   IconButton(
                     tooltip: context.t('common.delete'),
-                    onPressed: () => onDelete(i),
-                    icon: Icon(
-                      Icons.delete_outline,
-                      size: 19,
-                      color: c.inkFaint,
-                    ),
+                    onPressed: () => onDelete(index),
+                    icon: const Icon(Icons.delete_outline, size: 15),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
             );
           }),
-        const SizedBox(height: 18),
+        const SizedBox(height: 17),
       ],
     );
   }
 }
 
-/// Diálogo genérico para añadir una entrada con campos de texto.
 class _EntryDialog extends StatefulWidget {
-  const _EntryDialog({required this.titulo, required this.campos});
+  const _EntryDialog({required this.title, required this.fields});
 
-  final String titulo;
-
-  /// (clave, etiqueta, requerido)
-  final List<(String, String, bool)> campos;
+  final String title;
+  final List<(String, String, bool)> fields;
 
   @override
   State<_EntryDialog> createState() => _EntryDialogState();
@@ -695,7 +826,7 @@ class _EntryDialog extends StatefulWidget {
 class _EntryDialogState extends State<_EntryDialog> {
   final _formKey = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _controllers = {
-    for (final campo in widget.campos) campo.$1: TextEditingController(),
+    for (final field in widget.fields) field.$1: TextEditingController(),
   };
 
   @override
@@ -709,7 +840,7 @@ class _EntryDialogState extends State<_EntryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.titulo),
+      title: Text(widget.title),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: Form(
@@ -718,14 +849,14 @@ class _EntryDialogState extends State<_EntryDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final campo in widget.campos)
+                for (final field in widget.fields)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: TextFormField(
-                      controller: _controllers[campo.$1],
-                      decoration: InputDecoration(labelText: campo.$2),
-                      maxLines: campo.$1 == 'descripcion' ? 3 : 1,
-                      validator: campo.$3
+                      controller: _controllers[field.$1],
+                      decoration: InputDecoration(labelText: field.$2),
+                      maxLines: field.$1 == 'descripcion' ? 3 : 1,
+                      validator: field.$3
                           ? (value) => value == null || value.trim().isEmpty
                                 ? context.tr('common.required')
                                 : null
@@ -757,7 +888,6 @@ class _EntryDialogState extends State<_EntryDialog> {
   }
 }
 
-/// Diálogo para editar los datos básicos del postulante.
 class EditProfileDialog extends StatefulWidget {
   const EditProfileDialog({super.key, required this.profile});
 
@@ -773,7 +903,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _careerController;
   late final TextEditingController _phoneController;
   late final TextEditingController _cityController;
-  bool _isSaving = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -803,7 +933,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
+    setState(() => _saving = true);
     try {
       await context.read<AuthService>().updateProfile({
         'nombre_completo': _nameController.text.trim(),
@@ -812,17 +942,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         'ciudad': _cityController.text.trim(),
       });
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(error.toString()),
             backgroundColor: context.colors.danger,
           ),
         );
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -880,25 +1010,24 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.t('common.cancel')),
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(context.tr('common.cancel')),
         ),
         FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
+          onPressed: _saving ? null : _save,
+          child: _saving
               ? const SizedBox(
-                  height: 18,
                   width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(context.t('common.save')),
+              : Text(context.tr('common.save')),
         ),
       ],
     );
   }
 }
 
-/// Diálogo para cambiar la contraseña.
 class ChangePasswordDialog extends StatefulWidget {
   const ChangePasswordDialog({super.key});
 
@@ -908,16 +1037,16 @@ class ChangePasswordDialog extends StatefulWidget {
 
 class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _actualController = TextEditingController();
-  final _nuevaController = TextEditingController();
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
   final _confirmController = TextEditingController();
-  bool _isSaving = false;
+  bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    _actualController.dispose();
-    _nuevaController.dispose();
+    _currentController.dispose();
+    _newController.dispose();
     _confirmController.dispose();
     super.dispose();
   }
@@ -925,26 +1054,24 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
-      _isSaving = true;
+      _saving = true;
       _error = null;
     });
     try {
-      final ok = await context.read<AuthService>().changePassword(
-        _actualController.text,
-        _nuevaController.text,
+      final updated = await context.read<AuthService>().changePassword(
+        _currentController.text,
+        _newController.text,
       );
       if (!mounted) return;
-      if (ok) {
-        // AuthService cierra la sesión porque el backend revoca los tokens.
-        // SessionGate mostrará el acceso y el aviso correspondiente.
+      if (updated) {
+        Navigator.of(context).pop(true);
         return;
-      } else {
-        setState(() => _error = context.tr('settings.password.error'));
       }
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      setState(() => _error = context.tr('settings.password.error'));
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -961,7 +1088,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  controller: _actualController,
+                  controller: _currentController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: context.t('settings.password.current'),
@@ -973,13 +1100,11 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _nuevaController,
+                  controller: _newController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: context.t('settings.password.new'),
                     prefixIcon: const Icon(Icons.lock_reset_outlined),
-                    helperText: context.t('auth.password.hint'),
-                    helperMaxLines: 2,
                   ),
                   validator: (value) => strongPasswordT(context, value),
                 ),
@@ -991,19 +1116,13 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                     labelText: context.t('settings.password.confirm'),
                     prefixIcon: const Icon(Icons.lock_reset_outlined),
                   ),
-                  validator: (value) => value != _nuevaController.text
+                  validator: (value) => value != _newController.text
                       ? context.tr('reset.confirm.mismatch')
                       : null,
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: context.colors.danger,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text(_error!, style: TextStyle(color: context.colors.danger)),
                 ],
               ],
             ),
@@ -1012,25 +1131,24 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.t('common.cancel')),
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(context.tr('common.cancel')),
         ),
         FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
+          onPressed: _saving ? null : _save,
+          child: _saving
               ? const SizedBox(
-                  height: 18,
                   width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(context.t('common.update')),
+              : Text(context.tr('common.update')),
         ),
       ],
     );
   }
 }
 
-/// Diálogo de foto de perfil con recorte y zoom (acercar/alejar).
 class PhotoUploadDialog extends StatefulWidget {
   const PhotoUploadDialog({super.key});
 
@@ -1043,47 +1161,42 @@ class _PhotoUploadDialogState extends State<PhotoUploadDialog> {
   final GlobalKey<PhotoCropperState> _cropperKey = GlobalKey();
   Uint8List? _bytes;
   String? _error;
-  bool _isSaving = false;
+  bool _saving = false;
 
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1600,
-      imageQuality: 88,
-    );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    if (bytes.length > 3 * 1024 * 1024) {
-      setState(() => _error = context.tr('photo.too_big'));
-      return;
+    try {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 88,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      if (bytes.length > 3 * 1024 * 1024) {
+        setState(() => _error = context.tr('photo.too_big'));
+        return;
+      }
+      setState(() {
+        _bytes = bytes;
+        _error = null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     }
-    setState(() {
-      _bytes = bytes;
-      _error = null;
-    });
   }
 
   Future<void> _save() async {
-    if (_bytes == null) {
-      setState(() => _error = context.tr('photo.pick_first'));
-      return;
-    }
-    setState(() => _isSaving = true);
+    if (_bytes == null) return;
+    setState(() => _saving = true);
     try {
       final png = await _cropperKey.currentState?.exportPng();
-      if (!mounted) return;
-      if (png == null) {
+      if (!mounted || png == null) {
         setState(() => _error = context.tr('photo.error'));
         return;
       }
-      final file = XFile.fromData(
-        png,
-        name: 'perfil.png',
-        mimeType: 'image/png',
-      );
       final success = await context.read<AuthService>().uploadProfilePhoto(
-        file,
+        XFile.fromData(png, name: 'perfil.png', mimeType: 'image/png'),
       );
       if (!mounted) return;
       if (success) {
@@ -1091,83 +1204,75 @@ class _PhotoUploadDialogState extends State<PhotoUploadDialog> {
       } else {
         setState(() => _error = context.tr('photo.error'));
       }
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final cropSize = (MediaQuery.sizeOf(context).width - 112)
+        .clamp(160.0, 260.0)
+        .toDouble();
     return AlertDialog(
       title: Text(context.t('photo.title')),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_bytes == null)
-              Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: c.surfaceAlt,
-                  shape: BoxShape.circle,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_bytes == null)
+                Container(
+                  width: cropSize,
+                  height: cropSize,
+                  decoration: BoxDecoration(
+                    color: c.surfaceAlt,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.person, color: c.inkFaint, size: 64),
+                )
+              else
+                PhotoCropper(
+                  key: _cropperKey,
+                  imageBytes: _bytes!,
+                  size: cropSize,
                 ),
-                child: Icon(Icons.person, color: c.inkFaint, size: 72),
-              )
-            else ...[
-              PhotoCropper(key: _cropperKey, imageBytes: _bytes!),
-              const SizedBox(height: 4),
-              Text(
-                context.t('photo.adjust'),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: c.inkFaint, fontSize: 12),
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _pickImage,
+                icon: const Icon(Icons.upload_file_outlined, size: 16),
+                label: Text(
+                  _bytes == null
+                      ? context.t('photo.pick')
+                      : context.t('photo.change'),
+                ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!, style: TextStyle(color: c.danger)),
+              ],
             ],
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.upload_file_outlined, size: 18),
-              label: Text(
-                _bytes == null
-                    ? context.t('photo.pick')
-                    : context.t('photo.change'),
-              ),
-              onPressed: _isSaving ? null : _pickImage,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              context.t('photo.formats'),
-              textAlign: TextAlign.center,
-              style: TextStyle(color: c.inkFaint, fontSize: 12),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: c.danger, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.t('common.cancel')),
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(context.tr('common.cancel')),
         ),
         FilledButton(
-          onPressed: _isSaving || _bytes == null ? null : _save,
-          child: _isSaving
+          onPressed: _saving || _bytes == null ? null : _save,
+          child: _saving
               ? const SizedBox(
-                  height: 18,
                   width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(context.t('photo.upload')),
+              : Text(context.tr('photo.upload')),
         ),
       ],
     );
