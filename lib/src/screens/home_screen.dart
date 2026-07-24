@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lookup_user/src/screens/offers_screen.dart';
 import 'package:lookup_user/src/services/auth_service.dart';
 import 'package:lookup_user/src/services/data_service.dart';
 import 'package:lookup_user/src/services/locale_controller.dart';
@@ -8,16 +9,19 @@ import 'package:lookup_user/src/theme.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
 import 'package:lookup_user/src/widgets/common.dart';
 
-/// Inicio del postulante: saludo, resumen breve y novedades.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
     required this.onOpenMessages,
     required this.onOpenNotifications,
+    required this.onOpenProcesses,
+    required this.onOpenOffers,
   });
 
   final VoidCallback onOpenMessages;
   final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenProcesses;
+  final VoidCallback onOpenOffers;
 
   Future<void> _refresh(BuildContext context) async {
     final accountId = context.read<AuthService>().cuentaId;
@@ -32,84 +36,356 @@ class HomeScreen extends StatelessWidget {
     final data = context.watch<LookUpDataService>();
     final c = context.colors;
     final name =
-        auth.profile?['nombre_completo']?.toString().split(' ').first ??
+        auth.profile?['nombre_completo']?.toString().trim().split(' ').first ??
         context.t('common.applicant');
-    final enProceso = data.applications.where((a) {
-      final estado = canonicalEstado(a['estado']?.toString() ?? '');
-      return estado != 'rechazado' && estado != 'aceptado';
-    }).length;
+    final activeApplications = data.applications
+        .where((application) {
+          final state = canonicalEstado(
+            application['estado']?.toString() ?? '',
+          );
+          return state != 'aceptado' && state != 'rechazado';
+        })
+        .take(2)
+        .toList();
+    final suggestedJobs = data.jobs
+        .where(
+          (job) =>
+              (job['estado']?.toString() ?? 'abierto') == 'abierto' &&
+              !data.hasAppliedTo(job['puesto_id']?.toString() ?? ''),
+        )
+        .take(2)
+        .toList();
 
     return RefreshIndicator(
       onRefresh: () => _refresh(context),
-      child: PageContainer(
-        maxWidth: 860,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 26, 22, 32),
+      child: ViewportScrollPage(
+        maxWidth: 980,
+        padding: const EdgeInsets.fromLTRB(22, 26, 22, 36),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               '${context.t('home.greeting')} $name',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              context.t('home.subtitle'),
-              style: TextStyle(color: c.inkMuted, fontSize: 15),
+              context
+                  .t('home.subtitle.date')
+                  .replaceAll('{date}', _todayLabel(context)),
+              style: TextStyle(color: c.inkMuted, fontSize: 13),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             if (data.error != null) ErrorBanner(message: data.error!),
-            // Resumen breve en una sola franja, sin tarjetas.
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                color: c.surfaceAlt,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _InlineStat(
-                      value: data.applications.length.toString(),
-                      label: context.t('home.applications'),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 760;
+                final processes = _HomeSection(
+                  title: context.t('home.active_processes'),
+                  actionLabel: context.t('common.view_all'),
+                  onAction: onOpenProcesses,
+                  child: activeApplications.isEmpty
+                      ? _CompactEmpty(
+                          icon: Icons.route_outlined,
+                          message: context.t('home.processes.empty'),
+                        )
+                      : Column(
+                          children: activeApplications
+                              .map(
+                                (application) => _CompactProcessRow(
+                                  application: application,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                );
+                final notifications = _HomeSection(
+                  title: context.t('home.notifications'),
+                  actionLabel: context.t('common.view_all'),
+                  onAction: onOpenNotifications,
+                  child: data.events.isEmpty
+                      ? _CompactEmpty(
+                          icon: Icons.notifications_none,
+                          message: context.t('notif.empty.title'),
+                        )
+                      : Column(
+                          children: data.events
+                              .take(3)
+                              .map(
+                                (event) => _NotificationRow(
+                                  event: event,
+                                  onTap: onOpenNotifications,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                );
+                if (!wide) {
+                  return Column(
+                    children: [
+                      processes,
+                      const SizedBox(height: 24),
+                      notifications,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 11, child: processes),
+                    Container(
+                      width: 1,
+                      height: 238,
+                      margin: const EdgeInsets.symmetric(horizontal: 22),
+                      color: c.border,
                     ),
-                  ),
-                  Container(width: 1, height: 34, color: c.border),
-                  Expanded(
-                    child: _InlineStat(
-                      value: enProceso.toString(),
-                      label: context.t('home.in_process'),
-                    ),
-                  ),
-                  Container(width: 1, height: 34, color: c.border),
-                  Expanded(
-                    child: _InlineStat(
-                      value: data.unreadMessages.toString(),
-                      label: context.t('nav.messages'),
-                      highlight: data.unreadMessages > 0,
-                      onTap: onOpenMessages,
-                    ),
-                  ),
-                ],
-              ),
+                    Expanded(flex: 9, child: notifications),
+                  ],
+                );
+              },
             ),
-            if (data.events.isNotEmpty) ...[
-              const SizedBox(height: 26),
-              SectionHeader(
-                title: context.t('home.news'),
-                actionLabel: context.t('home.news.all'),
-                onAction: onOpenNotifications,
-              ),
-              ...data.events
-                  .take(3)
-                  .map(
-                    (event) => _NotificationRow(
-                      event: event,
-                      onTap: onOpenNotifications,
+            const SizedBox(height: 28),
+            _HomeSection(
+              title: context.t('home.jobs_for_you'),
+              actionLabel: context.t('common.view_all'),
+              onAction: onOpenOffers,
+              child: suggestedJobs.isEmpty
+                  ? _CompactEmpty(
+                      icon: Icons.work_outline,
+                      message: context.t('home.jobs.empty'),
+                    )
+                  : Column(
+                      children: suggestedJobs
+                          .map(
+                            (job) => JobRow(
+                              job: job,
+                              applied: false,
+                              dense: true,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OfferDetailPage(job: job),
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
-                  ),
-            ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  String _todayLabel(BuildContext context) {
+    final date = DateTime.now();
+    final language = context.read<LocaleController>().language;
+    const weekdaysEs = [
+      'lunes',
+      'martes',
+      'miércoles',
+      'jueves',
+      'viernes',
+      'sábado',
+      'domingo',
+    ];
+    const monthsEs = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    const weekdaysEn = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const monthsEn = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    if (language == 'en') {
+      return '${weekdaysEn[date.weekday - 1]}, ${monthsEn[date.month - 1]} ${date.day}';
+    }
+    return '${weekdaysEs[date.weekday - 1]} ${date.day} de ${monthsEs[date.month - 1]}';
+  }
+}
+
+class _HomeSection extends StatelessWidget {
+  const _HomeSection({
+    required this.title,
+    required this.child,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final Widget child;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title.toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: c.inkFaint,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+            if (actionLabel != null)
+              TextButton(
+                onPressed: onAction,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 30),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+                child: Text(actionLabel!),
+              ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        child,
+      ],
+    );
+  }
+}
+
+class _CompactProcessRow extends StatelessWidget {
+  const _CompactProcessRow({required this.application});
+
+  final Map<String, dynamic> application;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final position = asMap(application['puesto']);
+    final company = asMap(application['empresa']);
+    final state = canonicalEstado(
+      application['estado']?.toString() ?? 'pendiente',
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              InitialsAvatar(
+                name:
+                    company['nombre']?.toString() ??
+                    position['titulo']?.toString() ??
+                    '?',
+                size: 34,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      position['titulo']?.toString() ?? '—',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: c.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      company['nombre']?.toString() ?? '—',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: c.inkMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              StatusChip(label: state, compact: true),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _MiniStageLine(state: state),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStageLine extends StatelessWidget {
+  const _MiniStageLine({required this.state});
+
+  final String state;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final current = switch (state) {
+      'en_revision' => 1,
+      'entrevista' => 2,
+      'aceptado' || 'rechazado' => 3,
+      _ => 0,
+    };
+    return Row(
+      children: List.generate(7, (index) {
+        if (index.isOdd) {
+          final step = index ~/ 2;
+          return Expanded(
+            child: Container(
+              height: 2,
+              color: step < current ? c.brand : c.border,
+            ),
+          );
+        }
+        final step = index ~/ 2;
+        final reached = step <= current;
+        return Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: reached ? c.brand : c.background,
+            shape: BoxShape.circle,
+            border: Border.all(color: reached ? c.brand : c.border, width: 1.5),
+          ),
+          child: reached
+              ? const Icon(Icons.check, size: 7, color: Colors.white)
+              : null,
+        );
+      }),
     );
   }
 }
@@ -123,64 +399,56 @@ class _NotificationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final eventType = event['tipo_evento']?.toString() ?? '';
+    final icon = switch (eventType) {
+      'postulacion_creada' => Icons.send_outlined,
+      'estado_actualizado' => Icons.assignment_turned_in_outlined,
+      _ => Icons.notifications_none,
+    };
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: c.border)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.brand.withValues(alpha: c.chipAlpha),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(
-                Icons.notifications_outlined,
-                size: 18,
-                color: c.brand,
-              ),
-            ),
-            const SizedBox(width: 12),
+            Icon(icon, size: 17, color: c.brand),
+            const SizedBox(width: 9),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    event['titulo']?.toString() ?? '-',
+                    prettyEventText(
+                      context,
+                      event['titulo']?.toString() ?? '—',
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: c.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     eventDescriptionT(context, event),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: c.inkMuted,
-                      fontSize: 12.5,
-                      height: 1.35,
-                    ),
+                    style: TextStyle(color: c.inkMuted, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Text(
               relativeDateT(context, event['fecha']?.toString()),
-              style: TextStyle(color: c.inkFaint, fontSize: 11.5),
+              style: TextStyle(color: c.inkFaint, fontSize: 12),
             ),
           ],
         ),
@@ -189,47 +457,28 @@ class _NotificationRow extends StatelessWidget {
   }
 }
 
-class _InlineStat extends StatelessWidget {
-  const _InlineStat({
-    required this.value,
-    required this.label,
-    this.highlight = false,
-    this.onTap,
-  });
+class _CompactEmpty extends StatelessWidget {
+  const _CompactEmpty({required this.icon, required this.message});
 
-  final String value;
-  final String label;
-  final bool highlight;
-  final VoidCallback? onTap;
+  final IconData icon;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final content = Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: highlight ? c.accent : c.ink,
-            height: 1.1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: context.colors.inkFaint),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: context.colors.inkMuted, fontSize: 12.5),
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12.5, color: c.inkMuted),
-        ),
-      ],
-    );
-    if (onTap == null) return content;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: content,
+        ],
+      ),
     );
   }
 }

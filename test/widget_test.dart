@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lookup_user/main.dart';
 import 'package:lookup_user/src/screens/applications_screen.dart';
+import 'package:lookup_user/src/screens/company_screen.dart';
 import 'package:lookup_user/src/screens/messages_screen.dart';
+import 'package:lookup_user/src/screens/notifications_screen.dart';
+import 'package:lookup_user/src/screens/offers_screen.dart';
 import 'package:lookup_user/src/screens/profile_screen.dart';
 import 'package:lookup_user/src/utils/formatters.dart';
 import 'package:lookup_user/src/widgets/common.dart';
@@ -11,12 +15,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _TestDataService extends LookUpDataService {
   _TestDataService({
+    this.testJobs = const <Map<String, dynamic>>[],
     this.testInbox = const <Map<String, dynamic>>[],
     this.testApplications = const <Map<String, dynamic>>[],
+    this.testMetrics,
+    this.testAchievements = const <Map<String, dynamic>>[],
+    this.testEvents = const <Map<String, dynamic>>[],
+    this.testUnseenNotifications = 0,
+    this.failEvents = false,
+    this.failThread = false,
+    this.failCompany = false,
+    this.failJobDetail = false,
   });
 
+  final List<Map<String, dynamic>> testJobs;
   final List<Map<String, dynamic>> testInbox;
   final List<Map<String, dynamic>> testApplications;
+  final Map<String, dynamic>? testMetrics;
+  final List<Map<String, dynamic>> testAchievements;
+  final List<Map<String, dynamic>> testEvents;
+  final int testUnseenNotifications;
+  final bool failEvents;
+  final bool failThread;
+  final bool failCompany;
+  final bool failJobDetail;
+  int markNotificationsSeenCalls = 0;
+
+  @override
+  List<Map<String, dynamic>> get jobs => testJobs;
 
   @override
   List<Map<String, dynamic>> get inbox => testInbox;
@@ -25,19 +51,57 @@ class _TestDataService extends LookUpDataService {
   List<Map<String, dynamic>> get applications => testApplications;
 
   @override
+  Map<String, dynamic>? get metrics => testMetrics;
+
+  @override
+  List<Map<String, dynamic>> get achievements => testAchievements;
+
+  @override
+  List<Map<String, dynamic>> get events => testEvents;
+
+  @override
+  int get unseenNotifications => testUnseenNotifications;
+
+  @override
   Future<void> fetchInbox({bool notify = true}) async {}
 
   @override
-  Future<void> fetchThread(String postulacionId, {bool notify = true}) async {}
+  Future<void> fetchThread(String postulacionId, {bool notify = true}) async {
+    if (failThread) throw StateError('thread failure');
+  }
 
   @override
   Future<void> markThreadRead(String postulacionId) async {}
 
   @override
-  Future<void> fetchEvents({bool notify = true}) async {}
+  Future<void> fetchEvents({bool notify = true}) async {
+    if (failEvents) throw StateError('events failure');
+  }
 
   @override
-  Future<void> markNotificationsSeen() async {}
+  Future<Map<String, dynamic>?> fetchCuenta(String cuentaId) async {
+    if (failCompany) throw StateError('company failure');
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchJobsByCompany(
+    String empresaId,
+  ) async {
+    if (failCompany) throw StateError('company jobs failure');
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchJobDetail(String puestoId) async {
+    if (failJobDetail) throw StateError('job detail failure');
+    return null;
+  }
+
+  @override
+  Future<void> markNotificationsSeen() async {
+    markNotificationsSeenCalls++;
+  }
 }
 
 class _TestAuthService extends AuthService {
@@ -51,6 +115,7 @@ class _TestAuthService extends AuthService {
 
   final Map<String, dynamic> testProfile;
   Map<String, dynamic>? lastProfileUpdate;
+  int changePasswordCalls = 0;
 
   @override
   Map<String, dynamic>? get profile => testProfile;
@@ -60,6 +125,15 @@ class _TestAuthService extends AuthService {
     lastProfileUpdate = Map<String, dynamic>.from(updates);
     testProfile.addAll(updates);
     notifyListeners();
+    return true;
+  }
+
+  @override
+  Future<bool> changePassword(
+    String passwordActual,
+    String passwordNuevo,
+  ) async {
+    changePasswordCalls++;
     return true;
   }
 }
@@ -132,10 +206,45 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Encuentra tu siguiente oportunidad'), findsOneWidget);
-    expect(find.text('Iniciar sesión'), findsOneWidget);
+    expect(
+      find.text('Tu búsqueda laboral,\nen un solo lugar.'),
+      findsOneWidget,
+    );
+    expect(find.text('Iniciar sesión'), findsNWidgets(2));
     expect(find.text('¿Eres una empresa?'), findsOneWidget);
     expect(find.text('Ir al portal de empresas'), findsOneWidget);
+  });
+
+  testWidgets('mobile applicant registration is one clear responsive form', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(360, 800));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeController()),
+          ChangeNotifierProvider(create: (_) => LocaleController()),
+          ChangeNotifierProvider(create: (_) => AuthService()),
+          ChangeNotifierProvider<LookUpDataService>(
+            create: (_) => _TestDataService(),
+          ),
+        ],
+        child: const LookUpUserApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crear cuenta de postulante'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crea tu cuenta de postulante'), findsOneWidget);
+    expect(find.byKey(const Key('register-name-field')), findsOneWidget);
+    expect(find.byKey(const Key('register-career-field')), findsOneWidget);
+    expect(find.byKey(const Key('register-city-field')), findsOneWidget);
+    expect(find.textContaining('Empieza a publicar'), findsNothing);
+    expect(tester.widget<BrandMark>(find.byType(BrandMark)).mini, isFalse);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('mobile shell keeps actions ordered at 360x800', (tester) async {
@@ -177,13 +286,120 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('mobile redesigned sections fit realistic content at 360x800', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(360, 800));
+    final data = _TestDataService(
+      testJobs: const [
+        {
+          'puesto_id': 'job-long',
+          'titulo': 'Analista de datos e inteligencia comercial junior',
+          'empresa_nombre': 'Nexa Analytics y Consultoría',
+          'ubicacion': 'Lima, Perú',
+          'tipo_contrato': 'tiempo_completo',
+          'moneda': 'PEN',
+          'salario_min': 3500,
+          'salario_max': 4800,
+          'fecha_publicacion': '2026-07-20',
+        },
+      ],
+      testApplications: const [
+        {
+          'postulacion_id': 'app-mobile-rich',
+          'estado': 'entrevista',
+          'fecha_postulacion': '2026-07-12',
+          'puesto': {
+            'titulo': 'Diseñador de experiencia de usuario e interfaces',
+          },
+          'empresa': {'nombre': 'Kallpa Studio Internacional'},
+          'hitos': [
+            {
+              'tipo_evento': 'estado_actualizado',
+              'estado_anterior': 'en_revision',
+              'estado_nuevo': 'entrevista',
+              'fecha': '2026-07-18',
+            },
+          ],
+        },
+      ],
+      testInbox: const [
+        {
+          'postulacion_id': 'app-mobile-rich',
+          'puesto_titulo': 'Diseñador UX/UI',
+          'contraparte': {'nombre': 'Kallpa Studio Internacional'},
+          'ultimo_mensaje': {
+            'texto': 'Queremos coordinar una entrevista esta semana.',
+            'fecha': '2026-07-18T10:30:00',
+            'remitente_rol': 'empresa',
+          },
+        },
+      ],
+      testMetrics: const {
+        'total_postulaciones': 12,
+        'total_en_revision': 7,
+        'total_entrevistas': 4,
+        'total_exitos': 2,
+        'total_rechazos': 3,
+        'tasa_exito': 16.7,
+      },
+      testAchievements: const [
+        {
+          'nombre_logro': 'Primera entrevista coordinada',
+          'fecha_obtencion': '2026-07-18',
+        },
+      ],
+      testEvents: const [
+        {
+          'tipo_evento': 'estado_actualizado',
+          'estado_nuevo': 'entrevista',
+          'titulo': 'Kallpa Studio actualizó tu proceso',
+          'fecha': '2026-07-18T10:30:00',
+        },
+      ],
+      testUnseenNotifications: 1,
+    );
+
+    await tester.pumpWidget(_testShell(data: data));
+    await tester.pumpAndSettle();
+    expect(find.text('PROCESOS ACTIVOS'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(NavigationDestination).at(2));
+    await tester.pumpAndSettle();
+    expect(find.text('Vacantes laborales'), findsOneWidget);
+    final offersChip = tester.widget<ChoiceChip>(
+      find.byKey(const Key('offers-filter-todos')),
+    );
+    expect(offersChip.selectedColor, const Color(0xFF2C3CA6));
+    expect(offersChip.labelStyle?.color, Colors.white);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.pumpAndSettle();
+    expect(find.text('Mis postulaciones'), findsOneWidget);
+    final applicationsChip = tester.widget<ChoiceChip>(
+      find.byKey(const Key('applications-filter-todas')),
+    );
+    expect(applicationsChip.selectedColor, const Color(0xFF2C3CA6));
+    expect(applicationsChip.labelStyle?.color, Colors.white);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(NavigationDestination).at(4));
+    await tester.pumpAndSettle();
+    expect(find.text('Resumen de tu proceso'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop shell exposes global search at 1440x900', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     _setViewport(tester, const Size(1440, 900));
+    final data = _TestDataService(testUnseenNotifications: 2);
 
-    await tester.pumpWidget(_testShell());
+    await tester.pumpWidget(_testShell(data: data));
     await tester.pumpAndSettle();
 
     expect(find.byType(SearchBar), findsOneWidget);
@@ -202,13 +418,57 @@ void main() {
     expect(messageX, lessThan(notificationX));
     expect(notificationX, lessThan(profileX));
 
-    await tester.tap(find.byTooltip('Notificaciones'));
+    final notificationButton = find.byTooltip('Notificaciones');
+    final notificationRect = tester.getRect(notificationButton);
+    await tester.tap(notificationButton);
     await tester.pump();
     final popover = find.byKey(const Key('notifications-popover'));
     expect(popover, findsOneWidget);
     expect(tester.getSize(popover).width, lessThan(500));
     expect(tester.getSize(popover).height, lessThan(600));
+    final popoverRect = tester.getRect(popover);
+    expect(popoverRect.top, greaterThanOrEqualTo(notificationRect.bottom));
+    expect((popoverRect.right - notificationRect.right).abs(), lessThan(24));
+    expect(data.markNotificationsSeenCalls, 0);
+    await tester.tap(find.byKey(const Key('notifications-mark-read')));
+    await tester.pump();
+    expect(data.markNotificationsSeenCalls, 1);
     expect(find.text('Hola, Postulante'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('slash opens global search without changing section', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(1200, 800));
+
+    await tester.pumpWidget(_testShell());
+    await tester.pumpAndSettle();
+    expect(find.text('Hola, Postulante'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.slash);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Busca en LookUp'), findsOneWidget);
+    expect(find.text('Hola, Postulante'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('notification popup adapts to a short web viewport', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(1200, 260));
+
+    await tester.pumpWidget(_testShell());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Notificaciones'));
+    await tester.pump();
+
+    final popover = find.byKey(const Key('notifications-popover'));
+    expect(popover, findsOneWidget);
+    expect(tester.getSize(popover).height, lessThanOrEqualTo(236));
     expect(tester.takeException(), isNull);
   });
 
@@ -294,29 +554,15 @@ void main() {
       final pageScroll = find.byKey(const Key('profile-page-scroll'));
       expect(pageScroll, findsOneWidget);
       expect(tester.getSize(pageScroll).width, 1200);
-      expect(
-        find.ancestor(of: pageScroll, matching: find.byType(PageContainer)),
-        findsNothing,
-      );
       expect(find.text('Mi perfil'), findsNothing);
       expect(find.byKey(const Key('profile-change-photo')), findsOneWidget);
       expect(find.byKey(const Key('profile-edit-general')), findsOneWidget);
       expect(find.byTooltip('Editar perfil'), findsOneWidget);
       expect(find.text('Editar'), findsOneWidget);
       expect(find.text('   Ingeniería de software   '), findsNothing);
-      expect(find.text('Ingeniería de software'), findsOneWidget);
-      expect(find.text('999 888 777'), findsOneWidget);
-      expect(find.text('Lima'), findsOneWidget);
-
-      final careerX = tester.getTopLeft(find.text('Ingeniería de software')).dx;
-      final phoneX = tester.getTopLeft(find.text('999 888 777')).dx;
-      final cityX = tester.getTopLeft(find.text('Lima')).dx;
-      final careerLabelRight = tester
-          .getTopRight(find.text('Carrera o especialidad'))
-          .dx;
-      expect((careerX - phoneX).abs(), lessThan(1));
-      expect((careerX - cityX).abs(), lessThan(1));
-      expect(careerX - careerLabelRight, lessThan(100));
+      expect(find.text('Ingeniería de software · Lima'), findsOneWidget);
+      expect(find.text('luis@example.com · 999 888 777'), findsOneWidget);
+      expect(find.textContaining('   Ingeniería'), findsNothing);
 
       await tester.tap(find.text('Editar'));
       await tester.pumpAndSettle();
@@ -381,7 +627,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('desktop messages omits the redundant inner title', (
+  testWidgets('successful password change closes its dialog', (tester) async {
+    _setViewport(tester, const Size(800, 700));
+    final auth = _TestAuthService(const {'nombre_completo': 'Luis Rodriguez'});
+
+    await tester.pumpWidget(
+      _testFeature(
+        auth: auth,
+        child: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: FilledButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const ChangePasswordDialog(),
+                ),
+                child: const Text('Abrir cambio de contraseña'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Abrir cambio de contraseña'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    expect(fields, findsNWidgets(3));
+    await tester.enterText(fields.at(0), 'Anterior123!');
+    await tester.enterText(fields.at(1), 'Nueva123!');
+    await tester.enterText(fields.at(2), 'Nueva123!');
+    await tester.tap(find.text('Actualizar'));
+    await tester.pumpAndSettle();
+
+    expect(auth.changePasswordCalls, 1);
+    expect(find.byType(ChangePasswordDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop messages keeps one contextual sidebar title', (
     tester,
   ) async {
     _setViewport(tester, const Size(1200, 800));
@@ -406,14 +690,74 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Mensajes'), findsNothing);
+    expect(find.text('Mensajes'), findsOneWidget);
     expect(find.text('Aún no tienes mensajes'), findsNothing);
     expect(find.byKey(const Key('messages-list-panel')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('messages-list-panel'))).width,
-      360,
+      300,
     );
     expect(find.text('Buscar conversaciones'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('notification errors keep prior events and expose retry', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      failEvents: true,
+      testEvents: const [
+        {
+          'tipo_evento': 'estado_actualizado',
+          'estado_nuevo': 'entrevista',
+          'titulo': 'Proceso actualizado',
+          'fecha': '2026-07-18T10:30:00',
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      _testFeature(child: const NotificationsScreen(popup: true), data: data),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Proceso actualizado'), findsOneWidget);
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(find.textContaining('events failure'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('detail loaders expose recoverable errors', (tester) async {
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(failCompany: true, failJobDetail: true);
+
+    await tester.pumpWidget(
+      _testFeature(
+        child: const CompanyScreen(empresaId: 'company-error'),
+        data: data,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(find.textContaining('company failure'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(
+      _testFeature(
+        child: const OfferDetailPage(
+          job: {
+            'puesto_id': 'job-error',
+            'titulo': 'Vacante con detalle temporalmente no disponible',
+            'estado': 'abierto',
+          },
+        ),
+        data: data,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Reintentar'), findsOneWidget);
+    expect(find.textContaining('job detail failure'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -451,6 +795,33 @@ void main() {
 
     expect(find.byKey(const Key('selected-thread-app-2')), findsOneWidget);
     expect(find.byKey(const Key('messages-empty-pane')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('chat thread errors expose retry without losing the inbox', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      failThread: true,
+      testInbox: const [
+        {
+          'postulacion_id': 'app-thread-error',
+          'puesto_titulo': 'Frontend',
+          'contraparte': {'nombre': 'Empresa disponible'},
+          'ultimo_mensaje': {'texto': 'Seguimos en contacto'},
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      _testFeature(child: const MessagesScreen(embedded: true), data: data),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Empresa disponible'), findsWidgets);
+    expect(find.textContaining('thread failure'), findsOneWidget);
+    expect(find.text('Reintentar'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -552,7 +923,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('mobile-messages-list')), findsOneWidget);
-    expect(find.text('Mensajes'), findsNothing);
+    expect(find.text('Mensajes'), findsOneWidget);
 
     await tester.tap(find.text('Empresa Móvil'));
     await tester.pumpAndSettle();
@@ -562,10 +933,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('theme uses Helvetica fallbacks and uniform page transitions', () {
+  test('theme uses Manrope, Sora headings and uniform page transitions', () {
     final theme = buildLookUpTheme(Brightness.light);
 
     expect(theme.textTheme.bodyMedium?.fontFamily, kLookUpFontFamily);
+    expect(theme.textTheme.headlineSmall?.fontFamily, kLookUpHeadingFontFamily);
     expect(theme.textTheme.bodyMedium?.fontFamilyFallback, contains('Arial'));
     expect(
       theme.pageTransitionsTheme.builders.values,

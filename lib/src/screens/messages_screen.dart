@@ -78,6 +78,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
       if (!mounted) return;
       final inbox = context.read<LookUpDataService>().inbox;
       _selectInitialThread(inbox);
+      if (_selected == null &&
+          inbox.isNotEmpty &&
+          MediaQuery.sizeOf(context).width >= 960) {
+        _selected = inbox.first;
+      }
       final selectedId = _selected?['postulacion_id']?.toString();
       if (selectedId != null &&
           !inbox.any(
@@ -174,14 +179,34 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
     final listPanel = Column(
       children: [
+        if (isWide)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 2),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                context.t('chat.title'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
           child: _ThreadSearchField(
             controller: _filterController,
             onChanged: (value) => setState(() => _filter = value),
           ),
         ),
         Divider(color: c.border, height: 1),
+        if (_loadError != null && inbox.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: ErrorBanner(
+              message: _loadError!,
+              actionLabel: context.t('common.retry'),
+              onAction: _loadInbox,
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(onRefresh: _loadInbox, child: lista),
         ),
@@ -198,7 +223,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           children: [
             SizedBox(
               key: const Key('messages-list-panel'),
-              width: 360,
+              width: 300,
               child: listPanel,
             ),
             VerticalDivider(width: 1, color: c.border),
@@ -244,13 +269,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return Scaffold(
       key: const Key('mobile-messages-list'),
       appBar: AppBar(
-        centerTitle: true,
+        centerTitle: false,
         leading: IconButton(
           tooltip: context.t('common.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const BrandMark(size: 32),
+        title: Text(context.t('chat.title')),
       ),
       body: SafeArea(top: false, child: listPanel),
     );
@@ -322,18 +347,34 @@ class _ThreadTile extends StatelessWidget {
     final esMio = ultimo['remitente_rol']?.toString() == 'postulante';
 
     return Material(
-      color: selected ? c.surfaceAlt : Colors.transparent,
+      color: selected ? c.brand.withValues(alpha: 0.08) : Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                width: 3,
+                color: selected ? c.brand : Colors.transparent,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(13, 10, 14, 10),
           child: Row(
             children: [
-              CompanyAvatar(
-                fotoUrl: contraparte['foto_url']?.toString(),
-                size: 48,
-              ),
-              const SizedBox(width: 12),
+              if ((contraparte['foto_url']?.toString().trim() ?? '').isNotEmpty)
+                CompanyAvatar(
+                  fotoUrl: contraparte['foto_url']?.toString(),
+                  size: 38,
+                )
+              else
+                InitialsAvatar(
+                  name:
+                      contraparte['nombre']?.toString() ??
+                      context.t('common.company'),
+                  size: 38,
+                ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +389,7 @@ class _ThreadTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14.5,
+                              fontSize: 12.5,
                               color: c.ink,
                             ),
                           ),
@@ -356,7 +397,7 @@ class _ThreadTile extends StatelessWidget {
                         Text(
                           _hora(ultimo['fecha']?.toString()),
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             color: unread > 0 ? c.accent : c.inkFaint,
                             fontWeight: unread > 0
                                 ? FontWeight.w600
@@ -381,7 +422,7 @@ class _ThreadTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: unread > 0 ? c.ink : c.inkMuted,
                               fontWeight: unread > 0
                                   ? FontWeight.w500
@@ -448,6 +489,7 @@ class _ChatViewState extends State<ChatView> {
   bool _isSending = false;
   bool _isLoadingThread = true;
   bool _isPolling = false;
+  String? _threadError;
 
   String get _postulacionId => widget.hilo['postulacion_id']?.toString() ?? '';
 
@@ -458,17 +500,29 @@ class _ChatViewState extends State<ChatView> {
   }
 
   Future<void> _initializeThread() async {
-    final data = context.read<LookUpDataService>();
-    await data.fetchThread(_postulacionId);
-    if (!mounted) return;
-    await data.markThreadRead(_postulacionId);
-    if (!mounted) return;
-    setState(() => _isLoadingThread = false);
-    _scrollToBottom(animated: false);
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 4),
-      (_) => _pollThread(),
-    );
+    _pollTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isLoadingThread = true;
+        _threadError = null;
+      });
+    }
+    try {
+      final data = context.read<LookUpDataService>();
+      await data.fetchThread(_postulacionId);
+      if (!mounted) return;
+      await data.markThreadRead(_postulacionId);
+      if (!mounted) return;
+      _scrollToBottom(animated: false);
+      _pollTimer = Timer.periodic(
+        const Duration(seconds: 4),
+        (_) => _pollThread(),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _threadError = error.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingThread = false);
+    }
   }
 
   Future<void> _pollThread() async {
@@ -483,6 +537,11 @@ class _ChatViewState extends State<ChatView> {
         await data.markThreadRead(_postulacionId);
         _scrollToBottom();
       }
+      if (mounted && _threadError != null) {
+        setState(() => _threadError = null);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _threadError = error.toString());
     } finally {
       _isPolling = false;
     }
@@ -510,6 +569,24 @@ class _ChatViewState extends State<ChatView> {
         _scrollController.jumpTo(target);
       }
     });
+  }
+
+  String _messageDayKey(String? raw) {
+    final date = DateTime.tryParse(raw ?? '');
+    if (date == null) return raw ?? '';
+    return '${date.year}-${date.month}-${date.day}';
+  }
+
+  String _messageDayLabel(BuildContext context, String? raw) {
+    final date = DateTime.tryParse(raw ?? '');
+    if (date == null) return formatDate(raw);
+    final now = DateTime.now();
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return context.t('chat.today');
+    }
+    return formatDate(raw);
   }
 
   Future<void> _send() async {
@@ -549,6 +626,19 @@ class _ChatViewState extends State<ChatView> {
     final contraparte = asMap(widget.hilo['contraparte']);
     final auth = context.watch<AuthService>();
     final compact = MediaQuery.sizeOf(context).width < 430;
+    final timeline = <Widget>[];
+    String? previousDay;
+    for (final message in mensajes) {
+      final rawDate = message['fecha_hora']?.toString();
+      final day = _messageDayKey(rawDate);
+      if (day != previousDay) {
+        timeline.add(_ChatDayLabel(label: _messageDayLabel(context, rawDate)));
+        previousDay = day;
+      }
+      timeline.add(
+        ChatBubble(contacto: message, myRole: auth.role ?? 'postulante'),
+      );
+    }
 
     return Container(
       color: c.background,
@@ -556,7 +646,7 @@ class _ChatViewState extends State<ChatView> {
         children: [
           // Cabecera de la conversación
           Container(
-            height: 56,
+            height: 52,
             padding: EdgeInsets.only(left: widget.showBack ? 4 : 16, right: 12),
             decoration: BoxDecoration(
               color: c.surface,
@@ -573,7 +663,7 @@ class _ChatViewState extends State<ChatView> {
                   ),
                 CompanyAvatar(
                   fotoUrl: contraparte['foto_url']?.toString(),
-                  size: 36,
+                  size: 32,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -587,8 +677,8 @@ class _ChatViewState extends State<ChatView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
                           color: c.ink,
                         ),
                       ),
@@ -596,7 +686,7 @@ class _ChatViewState extends State<ChatView> {
                         widget.hilo['puesto_titulo']?.toString() ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11.5, color: c.inkFaint),
+                        style: TextStyle(fontSize: 12, color: c.inkFaint),
                       ),
                     ],
                   ),
@@ -610,17 +700,37 @@ class _ChatViewState extends State<ChatView> {
             ),
           ),
           Expanded(
-            child: _isLoadingThread && mensajes.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
-                    itemCount: mensajes.length,
-                    itemBuilder: (context, index) => ChatBubble(
-                      contacto: mensajes[index],
-                      myRole: auth.role ?? 'postulante',
+            child: Column(
+              children: [
+                if (_threadError != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    child: Column(
+                      children: [
+                        ErrorBanner(message: _threadError!),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _initializeThread,
+                            icon: const Icon(Icons.refresh, size: 17),
+                            label: Text(context.t('common.retry')),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                Expanded(
+                  child: _isLoadingThread && mensajes.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+                          itemCount: timeline.length,
+                          itemBuilder: (context, index) => timeline[index],
+                        ),
+                ),
+              ],
+            ),
           ),
           SafeArea(
             top: false,
@@ -705,6 +815,36 @@ class _ChatViewState extends State<ChatView> {
   }
 }
 
+class _ChatDayLabel extends StatelessWidget {
+  const _ChatDayLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: c.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: c.inkFaint,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Burbuja de chat: mensajes propios a la derecha con tinte de marca.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({super.key, required this.contacto, required this.myRole});
@@ -741,14 +881,8 @@ class ChatBubble extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
         decoration: BoxDecoration(
-          color: isMine
-              ? (context.isDark
-                    ? const Color(0xFF31405F)
-                    : const Color(0xFFDCE5FA))
-              : c.surface,
-          border: Border.all(
-            color: isMine ? c.brand.withValues(alpha: 0.16) : c.border,
-          ),
+          color: isMine ? c.brand : c.surface,
+          border: Border.all(color: isMine ? c.brand : c.border),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(14),
             topRight: const Radius.circular(14),
@@ -770,7 +904,11 @@ class ChatBubble extends StatelessWidget {
               ),
             Text(
               mensaje,
-              style: TextStyle(color: c.ink, fontSize: 14, height: 1.4),
+              style: TextStyle(
+                color: isMine ? Colors.white : c.ink,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
             ),
             if (motivo != null && motivo.isNotEmpty)
               Padding(
@@ -778,7 +916,9 @@ class ChatBubble extends StatelessWidget {
                 child: Text(
                   '${context.t('chat.reason')}: $motivo',
                   style: TextStyle(
-                    color: c.inkMuted,
+                    color: isMine
+                        ? Colors.white.withValues(alpha: 0.82)
+                        : c.inkMuted,
                     fontStyle: FontStyle.italic,
                     fontSize: 12.5,
                   ),
@@ -789,7 +929,12 @@ class ChatBubble extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: Text(
                 _hora(contacto['fecha_hora']?.toString()),
-                style: TextStyle(fontSize: 10.5, color: c.inkFaint),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isMine
+                      ? Colors.white.withValues(alpha: 0.72)
+                      : c.inkFaint,
+                ),
               ),
             ),
           ],

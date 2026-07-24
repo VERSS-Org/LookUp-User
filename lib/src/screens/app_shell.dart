@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lookup_user/src/screens/applications_screen.dart';
@@ -37,6 +40,7 @@ class _AppShellState extends State<AppShell> {
   int _primaryIndex = 0;
   String? _requestedConversationId;
   final SearchController _searchController = SearchController();
+  final GlobalKey _notificationAnchorKey = GlobalKey();
   GlobalKey<NavigatorState> _contentNavigatorKey = GlobalKey<NavigatorState>();
 
   @override
@@ -62,11 +66,6 @@ class _AppShellState extends State<AppShell> {
     if (index == 2) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.read<LookUpDataService>().markProcessesSeen();
-      });
-    }
-    if (index == 5) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<LookUpDataService>().markNotificationsSeen();
       });
     }
   }
@@ -158,31 +157,54 @@ class _AppShellState extends State<AppShell> {
   void _openNotifications() {
     final isWide = MediaQuery.sizeOf(context).width >= 960;
     if (isWide) {
-      context.read<LookUpDataService>().markNotificationsSeen();
       final size = MediaQuery.sizeOf(context);
+      final anchorContext = _notificationAnchorKey.currentContext;
+      final renderBox = anchorContext?.findRenderObject() as RenderBox?;
+      final anchorOffset =
+          renderBox?.localToGlobal(Offset.zero) ?? const Offset(0, 52);
+      final anchorSize = renderBox?.size ?? const Size(42, 42);
+      final panelWidth = size.width < 420 ? size.width - 24 : 380.0;
+      final right = (size.width - anchorOffset.dx - anchorSize.width)
+          .clamp(12.0, size.width - panelWidth - 12)
+          .toDouble();
+      final preferredTop = anchorOffset.dy + anchorSize.height + 4;
+      final availableBelow = size.height - preferredTop - 12;
+      final top = availableBelow >= 240 ? preferredTop : 12.0;
+      final panelHeight = math.max(
+        0.0,
+        math.min(500.0, size.height - top - 12),
+      );
       showDialog<void>(
         context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.12),
+        barrierColor: Colors.transparent,
         builder: (dialogContext) => Dialog(
           alignment: Alignment.topRight,
-          insetPadding: const EdgeInsets.only(top: 68, right: 68, left: 20),
+          insetPadding: EdgeInsets.fromLTRB(12, top, right, 12),
           backgroundColor: Colors.transparent,
-          elevation: 8,
+          elevation: 0,
           child: SizedBox(
             key: const Key('notifications-popover'),
-            width: 420,
-            height: (size.height - 92).clamp(320, 560).toDouble(),
+            width: panelWidth,
+            height: panelHeight,
             child: const NotificationsScreen(popup: true),
           ),
         ),
       );
     } else {
-      context.read<LookUpDataService>().markNotificationsSeen();
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const NotificationsScreen()),
       );
     }
+  }
+
+  void _focusGlobalSearch() {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    final editing =
+        focusContext?.widget is EditableText ||
+        focusContext?.findAncestorWidgetOfExactType<EditableText>() != null;
+    if (editing || !_searchController.isAttached) return;
+    _searchController.openView();
   }
 
   void _openProfile() {
@@ -203,6 +225,8 @@ class _AppShellState extends State<AppShell> {
         return HomeScreen(
           onOpenMessages: _openMessages,
           onOpenNotifications: _openNotifications,
+          onOpenProcesses: () => _select(2),
+          onOpenOffers: () => _select(1),
         );
       case 1:
         return OffersScreen(onClearSearch: _clearSearch);
@@ -256,41 +280,47 @@ class _AppShellState extends State<AppShell> {
     final c = context.colors;
 
     if (isWide) {
-      return Scaffold(
-        body: Column(
-          children: [
-            _TopNavBar(
-              index: effectiveWideIndex,
-              destinations: destinations,
-              unread: data.unreadMessages,
-              processAlerts: data.processAlerts,
-              notifications: data.unseenNotifications,
-              onSelect: _select,
-              onOpenMessages: _openMessages,
-              onOpenNotifications: _openNotifications,
-              onOpenProfile: _openProfile,
-              searchController: _searchController,
-              onSearchChanged: _setSearchQuery,
-              onSearchSubmitted: _showSearchResults,
-              onClearSearch: _clearSearch,
-              onOpenJob: _openJobFromSearch,
-              onOpenCompany: _openCompanyFromSearch,
-            ),
-            // Navigator interno: los detalles se apilan aquí debajo del
-            // navbar, en lugar de tapar toda la pantalla.
-            Expanded(
-              child: _SectionSwitcher(
-                transitionKey: effectiveWideIndex,
-                child: Navigator(
-                  key: _contentNavigatorKey,
-                  onGenerateRoute: (settings) => MaterialPageRoute(
-                    settings: settings,
-                    builder: (_) => _pageFor(effectiveWideIndex),
+      return CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.slash): _focusGlobalSearch,
+        },
+        child: Scaffold(
+          body: Column(
+            children: [
+              _TopNavBar(
+                index: effectiveWideIndex,
+                destinations: destinations,
+                unread: data.unreadMessages,
+                processAlerts: data.processAlerts,
+                notifications: data.unseenNotifications,
+                onSelect: _select,
+                onOpenMessages: _openMessages,
+                onOpenNotifications: _openNotifications,
+                notificationAnchorKey: _notificationAnchorKey,
+                onOpenProfile: _openProfile,
+                searchController: _searchController,
+                onSearchChanged: _setSearchQuery,
+                onSearchSubmitted: _showSearchResults,
+                onClearSearch: _clearSearch,
+                onOpenJob: _openJobFromSearch,
+                onOpenCompany: _openCompanyFromSearch,
+              ),
+              // Navigator interno: los detalles se apilan aquí debajo del
+              // navbar, en lugar de tapar toda la pantalla.
+              Expanded(
+                child: _SectionSwitcher(
+                  transitionKey: effectiveWideIndex,
+                  child: Navigator(
+                    key: _contentNavigatorKey,
+                    onGenerateRoute: (settings) => MaterialPageRoute(
+                      settings: settings,
+                      builder: (_) => _pageFor(effectiveWideIndex),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -449,6 +479,7 @@ class _TopNavBar extends StatelessWidget {
     required this.onSelect,
     required this.onOpenMessages,
     required this.onOpenNotifications,
+    required this.notificationAnchorKey,
     required this.onOpenProfile,
     required this.searchController,
     required this.onSearchChanged,
@@ -466,6 +497,7 @@ class _TopNavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final VoidCallback onOpenMessages;
   final VoidCallback onOpenNotifications;
+  final GlobalKey notificationAnchorKey;
   final VoidCallback onOpenProfile;
   final SearchController searchController;
   final ValueChanged<String> onSearchChanged;
@@ -492,8 +524,8 @@ class _TopNavBar extends StatelessWidget {
         context.t('common.applicant');
 
     return Container(
-      height: 64,
-      padding: EdgeInsets.symmetric(horizontal: compactNav ? 14 : 18),
+      height: 52,
+      padding: EdgeInsets.symmetric(horizontal: compactNav ? 12 : 18),
       decoration: BoxDecoration(
         color: c.surface,
         border: Border(bottom: BorderSide(color: c.border)),
@@ -504,20 +536,21 @@ class _TopNavBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: () => onSelect(0),
             child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: BrandMark(size: 38),
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+              child: BrandMark(size: 32),
             ),
           ),
-          SizedBox(width: compactNav ? 8 : 16),
+          SizedBox(width: compactNav ? 6 : 12),
           for (var i = 0; i < destinations.length; i++)
             _NavLink(
+              icon: destinations[i].icon,
               label: destinations[i].label,
               selected: index == i,
               badge: i == 2 ? processAlerts : 0,
               compact: compactNav,
               onTap: () => onSelect(i),
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Align(
               alignment: Alignment.centerRight,
@@ -534,7 +567,7 @@ class _TopNavBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           BadgedIconButton(
             icon: Icons.chat_outlined,
             count: unread,
@@ -542,12 +575,13 @@ class _TopNavBar extends StatelessWidget {
             onPressed: onOpenMessages,
           ),
           BadgedIconButton(
+            key: notificationAnchorKey,
             icon: Icons.notifications_outlined,
             count: notifications,
             tooltip: context.t('notif.title'),
             onPressed: onOpenNotifications,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 5),
           PopupMenuButton<String>(
             tooltip: nombre,
             offset: const Offset(0, 46),
@@ -587,7 +621,7 @@ class _TopNavBar extends StatelessWidget {
             },
             child: ProfileAvatar(
               fotoUrl: auth.profile?['foto_url']?.toString(),
-              radius: 17,
+              radius: 15,
               name: nombre,
             ),
           ),
@@ -634,6 +668,7 @@ class _GlobalSearchState extends State<_GlobalSearch> {
     final emptyTitle = context.tr('search.empty.title');
     final emptyMessage = context.tr('search.empty.msg');
     final allResultsLabel = context.tr('search.all_results');
+    final connectionTitle = context.tr('common.error.connection');
     if (query.isEmpty) {
       _lastOptions = [
         _SearchPrompt(
@@ -659,9 +694,15 @@ class _GlobalSearchState extends State<_GlobalSearch> {
         })
         .take(4)
         .toList();
-    final companies = query.length >= 2
-        ? await data.searchCompanies(query)
-        : <Map<String, dynamic>>[];
+    List<Map<String, dynamic>> companies = const [];
+    String? companySearchError;
+    if (query.length >= 2) {
+      try {
+        companies = await data.searchCompanies(query);
+      } catch (error) {
+        companySearchError = error.toString();
+      }
+    }
     if (requestId != _requestId) return _lastOptions;
 
     final options = <Widget>[];
@@ -718,7 +759,15 @@ class _GlobalSearchState extends State<_GlobalSearch> {
             ),
       );
     }
-    if (options.isEmpty) {
+    if (companySearchError != null) {
+      options.add(
+        _SearchPrompt(
+          icon: Icons.cloud_off_outlined,
+          title: connectionTitle,
+          message: companySearchError,
+        ),
+      );
+    } else if (options.isEmpty) {
       options.add(
         _SearchPrompt(
           icon: Icons.search_off_outlined,
@@ -779,7 +828,7 @@ class _GlobalSearchState extends State<_GlobalSearch> {
           controller: controller,
           hintText: hint,
           leading: Icon(Icons.search, size: 20, color: c.inkFaint),
-          constraints: const BoxConstraints(minHeight: 40, maxHeight: 40),
+          constraints: const BoxConstraints(minHeight: 34, maxHeight: 34),
           padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 12),
           ),
@@ -796,6 +845,24 @@ class _GlobalSearchState extends State<_GlobalSearch> {
           hintStyle: WidgetStatePropertyAll(
             TextStyle(fontSize: 13, color: c.inkFaint),
           ),
+          trailing: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: c.border),
+              ),
+              child: Text(
+                '/',
+                style: TextStyle(
+                  color: c.inkFaint,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
           onTap: controller.openView,
           onChanged: widget.onChanged,
           onSubmitted: widget.onSubmitted,
@@ -867,6 +934,7 @@ class _SearchPrompt extends StatelessWidget {
 
 class _NavLink extends StatelessWidget {
   const _NavLink({
+    required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -874,6 +942,7 @@ class _NavLink extends StatelessWidget {
     this.compact = false,
   });
 
+  final IconData icon;
   final String label;
   final bool selected;
   final int badge;
@@ -886,38 +955,33 @@ class _NavLink extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 14),
-        height: 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 34,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 11),
+        decoration: BoxDecoration(
+          color: selected
+              ? c.brand.withValues(alpha: context.isDark ? 0.22 : 0.09)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 3),
-            Row(
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: compact ? 13.5 : 14,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    color: selected ? c.brand : c.inkMuted,
-                  ),
-                ),
-                if (badge > 0) ...[
-                  const SizedBox(width: 6),
-                  Badge.count(count: badge),
-                ],
-              ],
-            ),
-            const SizedBox(height: 3),
-            Container(
-              height: 2.5,
-              width: 26,
-              decoration: BoxDecoration(
-                color: selected ? c.brand : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
+            Icon(icon, size: 15, color: selected ? c.brand : c.inkMuted),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: compact ? 11.5 : 12.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: selected ? c.brand : c.inkMuted,
               ),
             ),
+            if (badge > 0) ...[
+              const SizedBox(width: 5),
+              Badge.count(count: badge),
+            ],
           ],
         ),
       ),
@@ -1009,86 +1073,111 @@ class ProfileDrawer extends StatelessWidget {
               ),
             ),
             Divider(color: c.border, height: 1),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(context.t('nav.my_profile')),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-              },
-            ),
-            Divider(color: c.border, height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-              child: Text(
-                context.t('settings.title').toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                  color: c.inkFaint,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(context.t('nav.my_profile')),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    Divider(color: c.border, height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+                      child: Text(
+                        context.t('settings.title').toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1,
+                          color: c.inkFaint,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 6,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.t('settings.theme'),
+                            style: TextStyle(fontSize: 13, color: c.inkMuted),
+                          ),
+                          const SizedBox(height: 8),
+                          SegmentedButton<ThemeMode>(
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                icon: const Icon(
+                                  Icons.light_mode_outlined,
+                                  size: 17,
+                                ),
+                                tooltip: context.t('settings.theme.light'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                icon: const Icon(
+                                  Icons.dark_mode_outlined,
+                                  size: 17,
+                                ),
+                                tooltip: context.t('settings.theme.dark'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                icon: const Icon(
+                                  Icons.brightness_auto_outlined,
+                                  size: 17,
+                                ),
+                                tooltip: context.t('settings.theme.system'),
+                              ),
+                            ],
+                            selected: {themeController.mode},
+                            onSelectionChanged: (selection) =>
+                                themeController.setMode(selection.first),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            context.t('settings.language'),
+                            style: TextStyle(fontSize: 13, color: c.inkMuted),
+                          ),
+                          const SizedBox(height: 8),
+                          SegmentedButton<String>(
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(
+                                value: 'es',
+                                label: Text('Español'),
+                              ),
+                              ButtonSegment(
+                                value: 'en',
+                                label: Text('English'),
+                              ),
+                            ],
+                            selected: {localeController.language},
+                            onSelectionChanged: (selection) =>
+                                localeController.setLanguage(selection.first),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.t('settings.theme'),
-                    style: TextStyle(fontSize: 13, color: c.inkMuted),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<ThemeMode>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        icon: const Icon(Icons.light_mode_outlined, size: 17),
-                        tooltip: context.t('settings.theme.light'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        icon: const Icon(Icons.dark_mode_outlined, size: 17),
-                        tooltip: context.t('settings.theme.dark'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        icon: const Icon(
-                          Icons.brightness_auto_outlined,
-                          size: 17,
-                        ),
-                        tooltip: context.t('settings.theme.system'),
-                      ),
-                    ],
-                    selected: {themeController.mode},
-                    onSelectionChanged: (selection) =>
-                        themeController.setMode(selection.first),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    context.t('settings.language'),
-                    style: TextStyle(fontSize: 13, color: c.inkMuted),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: 'es', label: Text('Español')),
-                      ButtonSegment(value: 'en', label: Text('English')),
-                    ],
-                    selected: {localeController.language},
-                    onSelectionChanged: (selection) =>
-                        localeController.setLanguage(selection.first),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
             Divider(color: c.border, height: 1),
             ListTile(
               leading: Icon(Icons.logout, color: c.danger),

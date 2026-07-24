@@ -103,45 +103,82 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Scaffold(
-      appBar: AppBar(title: Text(context.t('reset.title'))),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: context.t('common.back'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(context.t('reset.title')),
+      ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 64, 22, 36),
+          child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 390),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.lock_reset_rounded, size: 44, color: c.brand),
-                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: c.brand.withValues(
+                            alpha: context.isDark ? 0.20 : 0.09,
+                          ),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(
+                          Icons.lock_reset_rounded,
+                          size: 25,
+                          color: c.brand,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      _codeSent
+                          ? context.t('reset.step2.title')
+                          : context.t('reset.heading'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 7),
                     Text(
                       _codeSent
                           ? context.t('reset.step2.hint')
                           : context.t('reset.subtitle'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: c.inkMuted, height: 1.45),
+                      style: TextStyle(
+                        color: c.inkMuted,
+                        height: 1.45,
+                        fontSize: 13.5,
+                      ),
                     ),
                     const SizedBox(height: 22),
+                    _ResetFieldLabel(context.t('auth.email')),
                     TextFormField(
+                      key: const Key('reset-email-field'),
                       controller: _emailController,
                       enabled: !_codeSent && !_isLoading,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: context.t('auth.email'),
-                        prefixIcon: const Icon(Icons.email_outlined),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                     ),
                     if (_codeSent) ...[
                       const SizedBox(height: 14),
+                      _ResetFieldLabel(context.t('reset.code')),
                       TextFormField(
+                        key: const Key('reset-code-field'),
                         controller: _codeController,
                         enabled: !_isLoading,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: context.t('reset.code'),
                           hintText: context.t('reset.code.hint'),
                           prefixIcon: const Icon(Icons.pin_outlined),
                         ),
@@ -151,26 +188,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             : null,
                       ),
                       const SizedBox(height: 14),
+                      _ResetFieldLabel(context.t('reset.new_password')),
                       TextFormField(
+                        key: const Key('reset-new-password-field'),
                         controller: _passwordController,
                         enabled: !_isLoading,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText: context.t('reset.new_password'),
                           prefixIcon: const Icon(Icons.lock_outline),
-                          helperText: context.t('auth.password.hint'),
-                          helperMaxLines: 2,
                         ),
                         validator: (value) => strongPasswordT(context, value),
                       ),
                       const SizedBox(height: 14),
+                      _ResetFieldLabel(context.t('reset.confirm_password')),
                       TextFormField(
+                        key: const Key('reset-confirm-password-field'),
                         controller: _confirmController,
                         enabled: !_isLoading,
                         obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: context.t('reset.confirm_password'),
-                          prefixIcon: const Icon(Icons.lock_outline),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.lock_outline),
                         ),
                         validator: (value) => value != _passwordController.text
                             ? context.tr('reset.confirm.mismatch')
@@ -188,11 +225,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           style: TextStyle(color: c.inkMuted, fontSize: 13),
                         ),
                       ),
-                    ElevatedButton(
+                    FilledButton.icon(
+                      key: const Key('reset-submit'),
                       onPressed: _isLoading
                           ? null
                           : (_codeSent ? _submitReset : _requestCode),
-                      child: _isLoading
+                      icon: _isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -201,17 +239,46 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(
-                              _codeSent
-                                  ? context.t('reset.submit')
-                                  : context.t('reset.send_code'),
-                            ),
+                          : const Icon(Icons.send_rounded, size: 17),
+                      label: Text(
+                        _codeSent
+                            ? context.t('reset.submit')
+                            : context.t('reset.send_code'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => Navigator.pop(context),
+                      child: Text(context.t('reset.back_login')),
                     ),
                   ],
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResetFieldLabel extends StatelessWidget {
+  const _ResetFieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: context.colors.inkMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

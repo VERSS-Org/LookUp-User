@@ -5,10 +5,18 @@ import 'package:lookup_user/src/services/locale_controller.dart';
 
 /// Colores de marca LookUp (constantes entre modos).
 const Color kBrandBlue = Color(0xFF28348A);
-const Color kBrandBlueBright = Color(0xFF4053C8);
+const Color kBrandBlueBright = Color(0xFF2C3CA6);
 const Color kSkyBlue = Color(0xFF22A9E8);
-const String kLookUpFontFamily = 'Helvetica';
+const Color kInkNavy = Color(0xFF11182D);
+const String kLookUpFontFamily = 'Manrope';
+const String kLookUpBodyFontFamily = 'Manrope';
+const String kLookUpHeadingFontFamily = 'Sora';
 const List<String> kLookUpFontFallback = ['Arial', 'sans-serif'];
+const LinearGradient kLookUpBrandGradient = LinearGradient(
+  colors: [kBrandBlue, kSkyBlue],
+  begin: Alignment.centerLeft,
+  end: Alignment.centerRight,
+);
 
 TextStyle _lookUpTextStyle({
   Color? color,
@@ -16,8 +24,9 @@ TextStyle _lookUpTextStyle({
   FontWeight? fontWeight,
   double? height,
   double? letterSpacing,
+  String fontFamily = kLookUpBodyFontFamily,
 }) => TextStyle(
-  fontFamily: kLookUpFontFamily,
+  fontFamily: fontFamily,
   fontFamilyFallback: kLookUpFontFallback,
   color: color,
   fontSize: fontSize,
@@ -100,36 +109,36 @@ class LookUpColors extends ThemeExtension<LookUpColors> {
   final double chipAlpha;
 
   static const light = LookUpColors(
-    background: Color(0xFFF6F7FA),
+    background: Color(0xFFF4F6FB),
     surface: Color(0xFFFFFFFF),
-    surfaceAlt: Color(0xFFF0F2F7),
-    border: Color(0xFFE3E7EF),
-    ink: Color(0xFF1A2233),
-    inkMuted: Color(0xFF5C6577),
-    inkFaint: Color(0xFF8B93A7),
-    brand: kBrandBlue,
-    accent: Color(0xFF0E7FB6),
-    success: Color(0xFF1E7F4F),
-    warning: Color(0xFFA36716),
-    danger: Color(0xFFC03D3D),
-    chipAlpha: 0.10,
+    surfaceAlt: Color(0xFFEDF1F9),
+    border: Color(0xFFDCE3F0),
+    ink: kInkNavy,
+    inkMuted: Color(0xFF53607A),
+    inkFaint: Color(0xFF8792AA),
+    brand: kBrandBlueBright,
+    accent: Color(0xFF0D8ECF),
+    success: Color(0xFF14945E),
+    warning: Color(0xFFB36B0D),
+    danger: Color(0xFFD14343),
+    chipAlpha: 0.11,
   );
 
   // Modo oscuro sobre grises neutros (no azulados): descansa mejor la vista
   // y deja que el azul de marca destaque solo donde importa.
   static const dark = LookUpColors(
-    background: Color(0xFF141416),
-    surface: Color(0xFF1C1C1F),
-    surfaceAlt: Color(0xFF27272B),
-    border: Color(0xFF323237),
-    ink: Color(0xFFEDEDEF),
-    inkMuted: Color(0xFFA6A7AD),
-    inkFaint: Color(0xFF77787F),
-    brand: Color(0xFFA3B0FF),
-    accent: Color(0xFF57BDF0),
-    success: Color(0xFF5BC48D),
-    warning: Color(0xFFE0A65A),
-    danger: Color(0xFFEF7B7B),
+    background: Color(0xFF151923),
+    surface: Color(0xFF1D2330),
+    surfaceAlt: Color(0xFF272E3E),
+    border: Color(0xFF354055),
+    ink: Color(0xFFF5F7FC),
+    inkMuted: Color(0xFFB4BED2),
+    inkFaint: Color(0xFF7F8AA1),
+    brand: Color(0xFFAAB5FF),
+    accent: Color(0xFF59C7F4),
+    success: Color(0xFF63C996),
+    warning: Color(0xFFE5AD61),
+    danger: Color(0xFFF08383),
     chipAlpha: 0.16,
   );
 
@@ -259,13 +268,14 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       ? LookUpColors.dark
       : LookUpColors.light;
   final isDark = brightness == Brightness.dark;
-  final primary = isDark ? kBrandBlueBright : kBrandBlue;
+  final primary = palette.brand;
 
   final base = ThemeData(
     useMaterial3: true,
     brightness: brightness,
-    fontFamily: kLookUpFontFamily,
+    fontFamily: kLookUpBodyFontFamily,
     fontFamilyFallback: kLookUpFontFallback,
+    visualDensity: VisualDensity.standard,
     colorScheme: ColorScheme.fromSeed(
       seedColor: kBrandBlue,
       brightness: brightness,
@@ -281,26 +291,103 @@ ThemeData buildLookUpTheme(Brightness brightness) {
   );
 
   final textTheme = base.textTheme
+      .apply(
+        fontFamily: kLookUpBodyFontFamily,
+        fontFamilyFallback: kLookUpFontFallback,
+      )
       .apply(bodyColor: palette.ink, displayColor: palette.ink)
       .copyWith(
+        displayLarge: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 38,
+          fontWeight: FontWeight.w700,
+          color: palette.ink,
+          height: 1.12,
+          letterSpacing: -1,
+        ),
+        displayMedium: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: palette.ink,
+          height: 1.15,
+          letterSpacing: -0.7,
+        ),
+        headlineLarge: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: palette.ink,
+          height: 1.18,
+          letterSpacing: -0.45,
+        ),
+        headlineMedium: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: palette.ink,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
         headlineSmall: _lookUpTextStyle(
-          fontSize: 23,
-          fontWeight: FontWeight.w600,
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: palette.ink,
+          height: 1.22,
+          letterSpacing: -0.2,
+        ),
+        titleLarge: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
           color: palette.ink,
           height: 1.25,
         ),
-        titleLarge: _lookUpTextStyle(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-          color: palette.ink,
-        ),
         titleMedium: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 14.5,
           fontWeight: FontWeight.w600,
           color: palette.ink,
+          height: 1.3,
         ),
-        bodyMedium: _lookUpTextStyle(height: 1.45, color: palette.ink),
-        bodySmall: _lookUpTextStyle(color: palette.inkMuted),
-        labelLarge: _lookUpTextStyle(fontWeight: FontWeight.w600),
+        titleSmall: _lookUpTextStyle(
+          fontFamily: kLookUpHeadingFontFamily,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: palette.ink,
+          height: 1.3,
+        ),
+        bodyLarge: _lookUpTextStyle(
+          fontSize: 15,
+          height: 1.5,
+          color: palette.ink,
+        ),
+        bodyMedium: _lookUpTextStyle(
+          fontSize: 14,
+          height: 1.48,
+          color: palette.ink,
+        ),
+        bodySmall: _lookUpTextStyle(
+          fontSize: 12.5,
+          height: 1.42,
+          color: palette.inkMuted,
+        ),
+        labelLarge: _lookUpTextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+        ),
+        labelMedium: _lookUpTextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        labelSmall: _lookUpTextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.7,
+          color: palette.inkMuted,
+        ),
       );
 
   OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
@@ -324,19 +411,28 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       },
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: palette.background,
+      backgroundColor: palette.surface,
       foregroundColor: palette.ink,
       surfaceTintColor: Colors.transparent,
+      toolbarHeight: 60,
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
       titleTextStyle: _lookUpTextStyle(
+        fontFamily: kLookUpHeadingFontFamily,
         color: palette.ink,
-        fontSize: 19,
+        fontSize: 17,
         fontWeight: FontWeight.w700,
-        letterSpacing: 0,
+        letterSpacing: -0.1,
       ),
       shape: Border(bottom: BorderSide(color: palette.border)),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: palette.inkMuted,
+        minimumSize: const Size(42, 42),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      ),
     ),
     cardTheme: CardThemeData(
       color: palette.surface,
@@ -344,7 +440,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: palette.border),
       ),
     ),
@@ -354,40 +450,47 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         foregroundColor: Colors.white,
         disabledBackgroundColor: palette.surfaceAlt,
         disabledForegroundColor: palette.inkFaint,
-        minimumSize: const Size(64, 48),
+        minimumSize: const Size(64, 44),
         elevation: 0,
-        textStyle: _lookUpTextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: primary,
         foregroundColor: Colors.white,
+        minimumSize: const Size(64, 44),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: _lookUpTextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: palette.brand,
-        minimumSize: const Size(64, 46),
-        side: BorderSide(color: palette.border, width: 1.2),
-        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        minimumSize: const Size(64, 44),
+        side: BorderSide(color: palette.border),
+        textStyle: _lookUpTextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: palette.brand,
-        textStyle: _lookUpTextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        textStyle: _lookUpTextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: palette.surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       hintStyle: _lookUpTextStyle(color: palette.inkFaint),
       labelStyle: _lookUpTextStyle(color: palette.inkMuted),
       helperStyle: _lookUpTextStyle(color: palette.inkFaint, fontSize: 12),
@@ -409,7 +512,7 @@ ThemeData buildLookUpTheme(Brightness brightness) {
       space: 1,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      height: 66,
+      height: 64,
       backgroundColor: palette.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -449,8 +552,9 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         side: BorderSide(color: palette.border),
       ),
       titleTextStyle: _lookUpTextStyle(
+        fontFamily: kLookUpHeadingFontFamily,
         color: palette.ink,
-        fontSize: 19,
+        fontSize: 18,
         fontWeight: FontWeight.w700,
       ),
     ),
@@ -466,8 +570,12 @@ ThemeData buildLookUpTheme(Brightness brightness) {
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: palette.surfaceAlt,
       side: BorderSide(color: palette.border),
-      labelStyle: _lookUpTextStyle(color: palette.ink, fontSize: 13),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      labelStyle: _lookUpTextStyle(
+        color: palette.ink,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: const StadiumBorder(),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: SegmentedButton.styleFrom(
@@ -476,7 +584,74 @@ ThemeData buildLookUpTheme(Brightness brightness) {
         foregroundColor: palette.inkMuted,
         side: BorderSide(color: palette.border),
         textStyle: _lookUpTextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        shape: const StadiumBorder(),
       ),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: palette.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: palette.border),
+      ),
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelColor: palette.brand,
+      unselectedLabelColor: palette.inkMuted,
+      dividerColor: Colors.transparent,
+      indicatorSize: TabBarIndicatorSize.tab,
+      indicator: BoxDecoration(
+        color: palette.brand.withValues(alpha: isDark ? 0.24 : 0.09),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      labelStyle: _lookUpTextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+      unselectedLabelStyle: _lookUpTextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    searchBarTheme: SearchBarThemeData(
+      backgroundColor: WidgetStatePropertyAll(palette.surfaceAlt),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      elevation: const WidgetStatePropertyAll(0),
+      shape: const WidgetStatePropertyAll(StadiumBorder()),
+      hintStyle: WidgetStatePropertyAll(
+        _lookUpTextStyle(color: palette.inkFaint, fontSize: 12.5),
+      ),
+      textStyle: WidgetStatePropertyAll(
+        _lookUpTextStyle(color: palette.ink, fontSize: 12.5),
+      ),
+    ),
+    badgeTheme: BadgeThemeData(
+      backgroundColor: palette.danger,
+      textColor: Colors.white,
+      textStyle: _lookUpTextStyle(
+        color: Colors.white,
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? Colors.white
+            : palette.inkFaint,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? palette.brand
+            : palette.surfaceAlt,
+      ),
+      trackOutlineColor: WidgetStatePropertyAll(palette.border),
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbColor: WidgetStatePropertyAll(
+        palette.inkFaint.withValues(alpha: 0.48),
+      ),
+      radius: const Radius.circular(8),
+      thickness: const WidgetStatePropertyAll(4),
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(

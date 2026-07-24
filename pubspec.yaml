@@ -31,8 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # Algunos widgets adaptativos de Flutter referencian esta fuente en web.
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   provider: ^6.1.2
@@ -82,6 +81,14 @@ flutter:
   assets:
     - assets/images/logo_lookup.png
     - assets/images/logoLookUpMini.png
+
+  fonts:
+    - family: Sora
+      fonts:
+        - asset: assets/fonts/Sora-Variable.ttf
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
