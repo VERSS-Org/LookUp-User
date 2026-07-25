@@ -22,6 +22,65 @@ String modalityLabelT(BuildContext context, String? value) {
   return label == key ? value.replaceAll('_', ' ') : label;
 }
 
+/// Limpia la ubicación publicada para que no repita la modalidad.
+///
+/// Algunas vacantes históricas guardaron valores como
+/// `Remoto · Latinoamérica` dentro de `ubicacion`, aunque `modalidad` ya
+/// informa que el puesto es remoto. La interfaz conserva la cobertura
+/// geográfica útil y evita mostrar `Remoto` dos veces.
+String jobLocationLabel(Map<String, dynamic> job) {
+  final raw = job['ubicacion']?.toString().trim() ?? '';
+  if (raw.isEmpty) return '';
+
+  final parts = raw
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .split(RegExp(r'\s*(?:·|\|)\s*'))
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty);
+  final seen = <String>{};
+  final cleaned = <String>[];
+  for (final part in parts) {
+    final location = _stripJobModalityAtEdge(part);
+    if (location.isEmpty || _isJobModalityToken(location)) continue;
+    final normalized = normalizeSearchText(location);
+    if (!seen.add(normalized)) continue;
+    cleaned.add(location);
+  }
+  return cleaned.join(' · ');
+}
+
+const _jobModalityExpression =
+    r'(?:en\s+remoto|trabajo\s+remoto|home\s+office|remot[oa]?|remote|presencial(?:mente)?|h[ií]brid[oa]|hybrid)';
+
+bool _isJobModalityToken(String value) {
+  const tokens = {
+    'en remoto',
+    'trabajo remoto',
+    'home office',
+    'remoto',
+    'remota',
+    'remote',
+    'presencial',
+    'presencialmente',
+    'hibrido',
+    'hibrida',
+    'hybrid',
+  };
+  return tokens.contains(normalizeSearchText(value));
+}
+
+String _stripJobModalityAtEdge(String value) {
+  final leading = RegExp(
+    '^\\s*$_jobModalityExpression\\s*[-,/]\\s*',
+    caseSensitive: false,
+  );
+  final trailing = RegExp(
+    '\\s*[-,/]\\s*$_jobModalityExpression\\s*\$',
+    caseSensitive: false,
+  );
+  return value.replaceFirst(leading, '').replaceFirst(trailing, '').trim();
+}
+
 String? requiredField(String? value, String message) {
   if (value == null || value.trim().isEmpty) return message;
   return null;

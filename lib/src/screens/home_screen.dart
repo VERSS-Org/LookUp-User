@@ -286,7 +286,8 @@ class _CompactProcessRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              InitialsAvatar(
+              CompanyAvatar(
+                fotoUrl: company['foto_url']?.toString(),
                 name:
                     company['nombre']?.toString() ??
                     position['titulo']?.toString() ??
@@ -399,10 +400,13 @@ class _RecommendedCompanyCard extends StatelessWidget {
         context.t('common.company');
     final reasons = company['razones'] is List
         ? List<dynamic>.from(company['razones'] as List)
+              .where(
+                (reason) =>
+                    !normalizeSearchText(reason).contains('esta en tu ciudad'),
+              )
+              .toList()
         : const <dynamic>[];
-    final detail = reasons.isNotEmpty
-        ? reasons.first.toString()
-        : company['ciudad']?.toString() ?? '';
+    final detail = reasons.isNotEmpty ? reasons.first.toString() : '';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),

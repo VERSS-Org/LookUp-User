@@ -15,6 +15,7 @@ class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({
     super.key,
     this.embedded = false,
+    this.popover = false,
     this.onOpenJob,
     this.onOpenProcesses,
     this.onOpenConversation,
@@ -22,6 +23,7 @@ class NotificationsScreen extends StatefulWidget {
   });
 
   final bool embedded;
+  final bool popover;
   final ValueChanged<String>? onOpenJob;
   final VoidCallback? onOpenProcesses;
   final ValueChanged<String>? onOpenConversation;
@@ -179,17 +181,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (widget.embedded) {
       return Material(
-        color: Colors.transparent,
+        key: widget.popover ? const Key('notifications-popover') : null,
+        color: widget.popover ? c.surface : Colors.transparent,
+        clipBehavior: widget.popover ? Clip.antiAlias : Clip.none,
+        shape: widget.popover
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: c.border),
+              )
+            : null,
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 14, 22, 10),
+              padding: EdgeInsets.fromLTRB(
+                widget.popover ? 16 : 22,
+                widget.popover ? 12 : 14,
+                widget.popover ? 12 : 22,
+                10,
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       context.t('notif.title'),
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: widget.popover
+                          ? Theme.of(context).textTheme.titleMedium
+                          : Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
                   TextButton(
