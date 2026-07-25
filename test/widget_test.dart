@@ -426,13 +426,13 @@ void main() {
 
     await tester.tap(find.byTooltip('Notificaciones'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('notifications-popover')), findsNothing);
+    expect(find.byKey(const Key('notifications-popover')), findsOneWidget);
     expect(find.text('Notificaciones'), findsOneWidget);
     expect(data.markNotificationsSeenCalls, 0);
     await tester.tap(find.byKey(const Key('notifications-mark-read')));
     await tester.pump();
     expect(data.markNotificationsSeenCalls, 1);
-    expect(find.text('Hola, Postulante'), findsNothing);
+    expect(find.text('Hola, Postulante'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -454,6 +454,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop notification popover redirects inside the app shell', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _setViewport(tester, const Size(1200, 800));
+    final data = _TestDataService(
+      testEvents: const [
+        {
+          'notificacion_id': 'notif-shell-process',
+          'tipo': 'estado_postulacion',
+          'titulo': 'Tu proceso fue actualizado',
+          'metadata': {'postulacion_id': 'application-shell'},
+          'fecha_creacion': '2026-07-24T09:00:00',
+        },
+      ],
+    );
+
+    await tester.pumpWidget(_testShell(data: data));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Notificaciones'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('notifications-popover')), findsOneWidget);
+    expect(find.text('Hola, Postulante'), findsOneWidget);
+
+    await tester.tap(find.text('Tu proceso fue actualizado'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('notifications-popover')), findsNothing);
+    expect(find.text('Mis postulaciones'), findsOneWidget);
+    expect(data.markedNotificationIds, ['notif-shell-process']);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('notification page adapts to a short web viewport', (
     tester,
   ) async {
@@ -465,7 +499,7 @@ void main() {
     await tester.tap(find.byTooltip('Notificaciones'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('notifications-popover')), findsNothing);
+    expect(find.byKey(const Key('notifications-popover')), findsOneWidget);
     expect(find.text('Notificaciones'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
     expect(tester.takeException(), isNull);
@@ -940,7 +974,10 @@ void main() {
           'estado': 'entrevista',
           'fecha_postulacion': '2026-07-12',
           'puesto': {'titulo': 'Backend'},
-          'empresa': {'nombre': 'Empresa Exacta'},
+          'empresa': {
+            'nombre': 'Empresa Exacta',
+            'foto_url': 'https://example.test/empresa-exacta.png',
+          },
           'hitos': <Map<String, dynamic>>[],
         },
       ],
@@ -960,6 +997,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    final companyLogo = tester.widget<CompanyAvatar>(
+      find.byKey(const Key('application-company-logo-app-exact')),
+    );
+    expect(companyLogo.fotoUrl, 'https://example.test/empresa-exacta.png');
     await tester.tap(find.byKey(const Key('application-open-chat-app-exact')));
     await tester.pump();
 

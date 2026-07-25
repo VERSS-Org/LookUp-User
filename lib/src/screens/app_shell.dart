@@ -33,8 +33,8 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  // 0..3: secciones principales · 4: mensajes · 5: notificaciones
-  // 6: perfil · 7: búsqueda móvil
+  // 0..3: secciones principales · 4: mensajes · 6: perfil
+  // 7: búsqueda móvil
   int _index = 0;
   int _primaryIndex = 0;
   String? _requestedConversationId;
@@ -155,11 +155,85 @@ class _AppShellState extends State<AppShell> {
   void _openNotifications() {
     final isWide = MediaQuery.sizeOf(context).width >= 960;
     if (isWide) {
-      _select(5);
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: context.tr('notif.title'),
+        barrierColor: Colors.black.withValues(alpha: 0.08),
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (dialogContext, _, _) {
+          final availableHeight = (MediaQuery.sizeOf(dialogContext).height - 96)
+              .clamp(140.0, 620.0)
+              .toDouble();
+          void closeThen(VoidCallback action) {
+            Navigator.of(dialogContext).pop();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) action();
+            });
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 68, 18, 18),
+              child: Align(
+                alignment: Alignment.topRight,
+                child: SizedBox(
+                  width: 420,
+                  height: availableHeight,
+                  child: NotificationsScreen(
+                    embedded: true,
+                    popover: true,
+                    onOpenJob: (id) =>
+                        closeThen(() => _openJobFromNotification(id)),
+                    onOpenProcesses: () => closeThen(() => _select(2)),
+                    onOpenConversation: (id) =>
+                        closeThen(() => _openConversation(id)),
+                    onOpenCompany: (id) =>
+                        closeThen(() => _openCompanyFromNotification(id)),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, _, child) {
+          final eased = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: eased,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.97, end: 1).animate(eased),
+              alignment: Alignment.topRight,
+              child: child,
+            ),
+          );
+        },
+      );
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        MaterialPageRoute(
+          builder: (notificationsContext) {
+            void closeThen(VoidCallback action) {
+              Navigator.of(notificationsContext).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) action();
+              });
+            }
+
+            return NotificationsScreen(
+              onOpenJob: (id) => closeThen(() => _openJobFromNotification(id)),
+              onOpenProcesses: () => closeThen(() => _select(2)),
+              onOpenConversation: (id) =>
+                  closeThen(() => _openConversation(id)),
+              onOpenCompany: (id) =>
+                  closeThen(() => _openCompanyFromNotification(id)),
+            );
+          },
+        ),
       );
     }
   }
@@ -213,14 +287,6 @@ class _AppShellState extends State<AppShell> {
           key: ValueKey(_requestedConversationId),
           embedded: true,
           initialPostulacionId: _requestedConversationId,
-        );
-      case 5:
-        return NotificationsScreen(
-          embedded: true,
-          onOpenJob: _openJobFromNotification,
-          onOpenProcesses: () => _select(2),
-          onOpenConversation: _openConversation,
-          onOpenCompany: _openCompanyFromNotification,
         );
       case 7:
         return OffersScreen(

@@ -244,7 +244,9 @@ class _ApplicationBlock extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              InitialsAvatar(
+              CompanyAvatar(
+                key: Key('application-company-logo-$applicationId'),
+                fotoUrl: company['foto_url']?.toString(),
                 name:
                     company['nombre']?.toString() ??
                     position['titulo']?.toString() ??

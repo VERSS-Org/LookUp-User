@@ -171,20 +171,33 @@ class _CompanyScreenState extends State<CompanyScreen> {
                     message: context.t('company.no_openings'),
                   )
                 else
-                  ...jobs.map(
-                    (job) => JobRow(
-                      job: job,
+                  ...jobs.map((job) {
+                    final enrichedJob = <String, dynamic>{
+                      ...job,
+                      'empresa_nombre':
+                          job['empresa_nombre']?.toString().trim().isNotEmpty ==
+                              true
+                          ? job['empresa_nombre']
+                          : name,
+                      'empresa_foto':
+                          job['empresa_foto']?.toString().trim().isNotEmpty ==
+                              true
+                          ? job['empresa_foto']
+                          : company['foto_url'],
+                    };
+                    return JobRow(
+                      job: enrichedJob,
                       applied: data.hasAppliedTo(
                         job['puesto_id']?.toString() ?? '',
                       ),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => OfferDetailPage(job: job),
+                          builder: (_) => OfferDetailPage(job: enrichedJob),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
               ],
             ),
           );

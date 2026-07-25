@@ -31,6 +31,76 @@ void main() {
     });
   });
 
+  group('jobLocationLabel', () {
+    test('elimina la modalidad remota duplicada y conserva la cobertura', () {
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Remoto · Latinoamérica',
+          'modalidad': 'remoto',
+        }),
+        'Latinoamérica',
+      );
+    });
+
+    test('conserva la ciudad física y elimina partes repetidas', () {
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'San Isidro, Lima · Presencial · San Isidro, Lima',
+          'modalidad': 'presencial',
+        }),
+        'San Isidro, Lima',
+      );
+    });
+
+    test('admite guion y coma como separadores legacy de modalidad', () {
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Remoto - Latinoamérica',
+          'modalidad': 'remoto',
+        }),
+        'Latinoamérica',
+      );
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Remoto, Latinoamérica',
+          'modalidad': 'remoto',
+        }),
+        'Latinoamérica',
+      );
+    });
+
+    test('reconoce En remoto e Híbrida sin eliminar la ciudad', () {
+      expect(
+        jobLocationLabel({'ubicacion': 'En remoto', 'modalidad': 'remoto'}),
+        isEmpty,
+      );
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Híbrida · Lima',
+          'modalidad': 'hibrido',
+        }),
+        'Lima',
+      );
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Hibrida / San Isidro, Lima',
+          'modalidad': 'hibrido',
+        }),
+        'San Isidro, Lima',
+      );
+    });
+
+    test('no divide guiones internos de ubicaciones legítimas', () {
+      expect(
+        jobLocationLabel({
+          'ubicacion': 'Lima-Callao',
+          'modalidad': 'presencial',
+        }),
+        'Lima-Callao',
+      );
+    });
+  });
+
   group('strongPassword', () {
     test('acepta contrasena valida', () {
       expect(strongPassword('Postula123!'), isNull);

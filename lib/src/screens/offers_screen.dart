@@ -346,6 +346,7 @@ class JobRow extends StatelessWidget {
     final c = context.colors;
     final companyName = job['empresa_nombre']?.toString().trim() ?? '';
     final photo = job['empresa_foto']?.toString().trim() ?? '';
+    final location = jobLocationLabel(job);
     final published = relativeDateT(
       context,
       job['fecha_publicacion']?.toString(),
@@ -354,6 +355,11 @@ class JobRow extends StatelessWidget {
     final saved = context.watch<LookUpDataService>().isJobSaved(puestoId);
     final reasons = job['razones'] is List
         ? List<dynamic>.from(job['razones'] as List)
+              .where(
+                (reason) =>
+                    !normalizeSearchText(reason).contains('esta en tu ciudad'),
+              )
+              .toList()
         : const <dynamic>[];
 
     return InkWell(
@@ -366,19 +372,13 @@ class JobRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (photo.isNotEmpty)
-              CompanyAvatar(
-                fotoUrl: photo,
-                name: companyName,
-                size: dense ? 36 : 40,
-              )
-            else
-              InitialsAvatar(
-                name: companyName.isEmpty
-                    ? job['titulo']?.toString() ?? '?'
-                    : companyName,
-                size: dense ? 36 : 40,
-              ),
+            CompanyAvatar(
+              fotoUrl: photo,
+              name: companyName.isEmpty
+                  ? job['titulo']?.toString() ?? '?'
+                  : companyName,
+              size: dense ? 36 : 40,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -398,7 +398,7 @@ class JobRow extends StatelessWidget {
                   Text(
                     [
                       if (companyName.isNotEmpty) companyName,
-                      job['ubicacion']?.toString() ?? '—',
+                      if (location.isNotEmpty) location,
                       if ((job['modalidad']?.toString() ?? '').isNotEmpty)
                         modalityLabelT(context, job['modalidad']?.toString()),
                       contractLabelT(context, job['tipo_contrato']?.toString()),
@@ -427,67 +427,91 @@ class JobRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            if (!dense && MediaQuery.sizeOf(context).width >= 600)
-              IconButton(
-                key: Key('save-job-$puestoId'),
-                tooltip: context.t(saved ? 'offers.unsave' : 'offers.save'),
-                onPressed: puestoId.isEmpty
-                    ? null
-                    : () async {
-                        try {
-                          await context
-                              .read<LookUpDataService>()
-                              .toggleSavedJob(puestoId);
-                        } catch (error) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(error.toString())),
-                            );
-                          }
-                        }
-                      },
-                icon: Icon(
-                  saved ? Icons.bookmark : Icons.bookmark_border,
-                  color: saved ? c.brand : c.inkFaint,
-                ),
-              ),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: dense ? 145 : 190),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            SizedBox(
+              width: dense
+                  ? 145
+                  : MediaQuery.sizeOf(context).width >= 600
+                  ? 222
+                  : 130,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (applied)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                  if (!dense)
+                    SizedBox.square(
+                      dimension: 40,
+                      child: IconButton(
+                        key: Key('save-job-$puestoId'),
+                        tooltip: context.t(
+                          saved ? 'offers.unsave' : 'offers.save',
+                        ),
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.center,
+                        onPressed: puestoId.isEmpty
+                            ? null
+                            : () async {
+                                try {
+                                  await context
+                                      .read<LookUpDataService>()
+                                      .toggleSavedJob(puestoId);
+                                } catch (error) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(error.toString())),
+                                    );
+                                  }
+                                }
+                              },
+                        icon: Icon(
+                          saved ? Icons.bookmark : Icons.bookmark_border,
+                          color: saved ? c.brand : c.inkFaint,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  if (!dense) const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.circle, size: 7, color: c.success),
-                        const SizedBox(width: 4),
+                        if (applied)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Icon(Icons.circle, size: 7, color: c.success),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  context.t('offers.applied'),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: c.success,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         Text(
-                          context.t('offers.applied'),
+                          salaryLabelT(context, job),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
                           style: TextStyle(
-                            color: c.success,
-                            fontSize: 10,
+                            fontSize: dense ? 11 : 12,
                             fontWeight: FontWeight.w700,
+                            color: c.accent,
                           ),
                         ),
+                        if (published.isNotEmpty)
+                          Text(
+                            published,
+                            style: TextStyle(color: c.inkFaint, fontSize: 12),
+                          ),
                       ],
                     ),
-                  Text(
-                    salaryLabelT(context, job),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: dense ? 11 : 12,
-                      fontWeight: FontWeight.w700,
-                      color: c.accent,
-                    ),
                   ),
-                  if (published.isNotEmpty)
-                    Text(
-                      published,
-                      style: TextStyle(color: c.inkFaint, fontSize: 12),
-                    ),
                 ],
               ),
             ),
@@ -898,22 +922,26 @@ class _SummaryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final companyId = job['empresa_id']?.toString();
+    final location = jobLocationLabel(job);
     Widget row(String label, String value) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
+          SizedBox(
+            width: 102,
             child: Text(
               label,
               style: TextStyle(color: c.inkFaint, fontSize: 12),
             ),
           ),
           const SizedBox(width: 10),
-          Flexible(
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: c.ink,
                 fontWeight: FontWeight.w700,
@@ -964,10 +992,7 @@ class _SummaryPanel extends StatelessWidget {
             context.t('offers.modality'),
             modalityLabelT(context, job['modalidad']?.toString()),
           ),
-          row(
-            context.t('offers.location'),
-            job['ubicacion']?.toString() ?? '—',
-          ),
+          if (location.isNotEmpty) row(context.t('offers.location'), location),
           row(
             context.t('offers.published.short'),
             relativeDateT(context, job['fecha_publicacion']?.toString()),
