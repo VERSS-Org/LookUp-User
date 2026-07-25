@@ -116,11 +116,19 @@ class _OffersScreenState extends State<OffersScreen> {
         '${job['empresa_nombre'] ?? ''}',
       );
       final contract = job['tipo_contrato']?.toString() ?? '';
+      final puestoId = job['puesto_id']?.toString() ?? '';
+      final matchesFilter = switch (_contractFilter) {
+        'todos' => true,
+        'guardadas' => data.isJobSaved(puestoId),
+        _ => contract == _contractFilter,
+      };
       return searchable.contains(normalizedQuery) &&
-          (_contractFilter == 'todos' || contract == _contractFilter);
+          matchesFilter &&
+          (job['estado']?.toString() ?? 'abierto') == 'abierto';
     }).toList();
     const contractFilters = [
       'todos',
+      'guardadas',
       'tiempo_completo',
       'medio_tiempo',
       'practicas',
@@ -172,9 +180,11 @@ class _OffersScreenState extends State<OffersScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: contractFilters.map((filter) {
-                    final label = filter == 'todos'
-                        ? context.t('offers.filter.all')
-                        : contractLabelT(context, filter);
+                    final label = switch (filter) {
+                      'todos' => context.t('offers.filter.all'),
+                      'guardadas' => context.t('offers.filter.saved'),
+                      _ => contractLabelT(context, filter),
+                    };
                     return Padding(
                       padding: const EdgeInsets.only(right: 7),
                       child: ChoiceChip(
@@ -340,6 +350,11 @@ class JobRow extends StatelessWidget {
       context,
       job['fecha_publicacion']?.toString(),
     );
+    final puestoId = job['puesto_id']?.toString() ?? '';
+    final saved = context.watch<LookUpDataService>().isJobSaved(puestoId);
+    final reasons = job['razones'] is List
+        ? List<dynamic>.from(job['razones'] as List)
+        : const <dynamic>[];
 
     return InkWell(
       onTap: onTap,
@@ -352,7 +367,11 @@ class JobRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (photo.isNotEmpty)
-              CompanyAvatar(fotoUrl: photo, size: dense ? 36 : 40)
+              CompanyAvatar(
+                fotoUrl: photo,
+                name: companyName,
+                size: dense ? 36 : 40,
+              )
             else
               InitialsAvatar(
                 name: companyName.isEmpty
@@ -380,6 +399,8 @@ class JobRow extends StatelessWidget {
                     [
                       if (companyName.isNotEmpty) companyName,
                       job['ubicacion']?.toString() ?? '—',
+                      if ((job['modalidad']?.toString() ?? '').isNotEmpty)
+                        modalityLabelT(context, job['modalidad']?.toString()),
                       contractLabelT(context, job['tipo_contrato']?.toString()),
                     ].join(' · '),
                     maxLines: 1,
@@ -389,10 +410,47 @@ class JobRow extends StatelessWidget {
                       color: c.inkMuted,
                     ),
                   ),
+                  if (reasons.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      reasons.first.toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: dense ? 10.5 : 11,
+                        color: c.brand,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 10),
+            if (!dense && MediaQuery.sizeOf(context).width >= 600)
+              IconButton(
+                key: Key('save-job-$puestoId'),
+                tooltip: context.t(saved ? 'offers.unsave' : 'offers.save'),
+                onPressed: puestoId.isEmpty
+                    ? null
+                    : () async {
+                        try {
+                          await context
+                              .read<LookUpDataService>()
+                              .toggleSavedJob(puestoId);
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.toString())),
+                            );
+                          }
+                        }
+                      },
+                icon: Icon(
+                  saved ? Icons.bookmark : Icons.bookmark_border,
+                  color: saved ? c.brand : c.inkFaint,
+                ),
+              ),
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: dense ? 145 : 190),
               child: Column(
@@ -452,6 +510,8 @@ class OfferDetailPage extends StatefulWidget {
 class _OfferDetailPageState extends State<OfferDetailPage> {
   late Future<Map<String, dynamic>?> _detailFuture;
   bool _isApplying = false;
+  bool _isSaving = false;
+  bool _isFollowing = false;
   bool? _resolvedIsOpen;
 
   @override
@@ -507,6 +567,38 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
     }
   }
 
+  Future<void> _toggleSaved(String puestoId) async {
+    if (puestoId.isEmpty || _isSaving) return;
+    setState(() => _isSaving = true);
+    try {
+      await context.read<LookUpDataService>().toggleSavedJob(puestoId);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _toggleFollowing(String empresaId) async {
+    if (empresaId.isEmpty || _isFollowing) return;
+    setState(() => _isFollowing = true);
+    try {
+      await context.read<LookUpDataService>().toggleFollowCompany(empresaId);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isFollowing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = context.watch<LookUpDataService>();
@@ -515,6 +607,7 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
     final alreadyApplied = data.hasAppliedTo(puestoId);
     final isWide = MediaQuery.sizeOf(context).width >= 860;
     final isOpen = _resolvedIsOpen ?? _isJobOpen(widget.job);
+    final saved = data.isJobSaved(puestoId);
 
     return Scaffold(
       appBar: AppBar(
@@ -522,7 +615,9 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
         titleSpacing: 0,
         title: Text(
           context.t('offers.back'),
-          style: Theme.of(context).textTheme.labelLarge,
+          style: Theme.of(
+            context,
+          ).textTheme.labelLarge?.copyWith(color: context.colors.ink),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
@@ -536,6 +631,7 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
               snapshot.connectionState == ConnectionState.waiting &&
               job['descripcion'] == null;
           final detailIsOpen = _isJobOpen(job);
+          final companyId = job['empresa_id']?.toString() ?? '';
           final content = _MainContent(job: job, isLoading: isLoading);
           final summary = _SummaryPanel(
             job: job,
@@ -546,6 +642,12 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
             onApply: _apply,
             showCta: isWide,
             desktop: isWide,
+            saved: saved,
+            isSaving: _isSaving,
+            onToggleSaved: () => _toggleSaved(puestoId),
+            followed: data.isCompanyFollowed(companyId),
+            isFollowing: _isFollowing,
+            onToggleFollowing: () => _toggleFollowing(companyId),
           );
 
           return ViewportScrollPage(
@@ -624,20 +726,10 @@ class _JobHero extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: InitialsAvatar(
-              name: company.isEmpty
-                  ? job['titulo']?.toString() ?? '?'
-                  : company,
-              size: 38,
-            ),
+          CompanyAvatar(
+            fotoUrl: job['empresa_foto']?.toString(),
+            name: company.isEmpty ? job['titulo']?.toString() : company,
+            size: 48,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -779,6 +871,12 @@ class _SummaryPanel extends StatelessWidget {
     required this.onApply,
     required this.showCta,
     required this.desktop,
+    required this.saved,
+    required this.isSaving,
+    required this.onToggleSaved,
+    required this.followed,
+    required this.isFollowing,
+    required this.onToggleFollowing,
   });
 
   final Map<String, dynamic> job;
@@ -789,6 +887,12 @@ class _SummaryPanel extends StatelessWidget {
   final VoidCallback onApply;
   final bool showCta;
   final bool desktop;
+  final bool saved;
+  final bool isSaving;
+  final VoidCallback onToggleSaved;
+  final bool followed;
+  final bool isFollowing;
+  final VoidCallback onToggleFollowing;
 
   @override
   Widget build(BuildContext context) {
@@ -857,6 +961,10 @@ class _SummaryPanel extends StatelessWidget {
             contractLabelT(context, job['tipo_contrato']?.toString()),
           ),
           row(
+            context.t('offers.modality'),
+            modalityLabelT(context, job['modalidad']?.toString()),
+          ),
+          row(
             context.t('offers.location'),
             job['ubicacion']?.toString() ?? '—',
           ),
@@ -874,6 +982,19 @@ class _SummaryPanel extends StatelessWidget {
               onApply: onApply,
             ),
           ],
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const Key('offer-save-button'),
+            onPressed: isSaving || !isOpen ? null : onToggleSaved,
+            icon: isSaving
+                ? const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(saved ? Icons.bookmark : Icons.bookmark_border),
+            label: Text(context.t(saved ? 'offers.saved' : 'offers.save')),
+          ),
           if (companyId != null && companyId.isNotEmpty) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -885,6 +1006,25 @@ class _SummaryPanel extends StatelessWidget {
               ),
               icon: const Icon(Icons.business_outlined, size: 16),
               label: Text(context.t('offers.view_company')),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: isFollowing ? null : onToggleFollowing,
+              icon: isFollowing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      followed
+                          ? Icons.notifications_active_outlined
+                          : Icons.add,
+                      size: 16,
+                    ),
+              label: Text(
+                context.t(followed ? 'company.following' : 'company.follow'),
+              ),
             ),
           ],
         ],
@@ -966,7 +1106,7 @@ class _CompanyRow extends StatelessWidget {
             if (photo.isEmpty)
               InitialsAvatar(name: name, size: 38)
             else
-              CompanyAvatar(fotoUrl: photo, size: 38),
+              CompanyAvatar(fotoUrl: photo, name: name, size: 38),
             const SizedBox(width: 11),
             Expanded(
               child: Column(

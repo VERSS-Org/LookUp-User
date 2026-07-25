@@ -14,6 +14,14 @@ String contractLabelT(BuildContext context, String? value) {
   return label == key ? value.replaceAll('_', ' ') : label;
 }
 
+String modalityLabelT(BuildContext context, String? value) {
+  if (value == null || value.isEmpty) return context.tr('modalidad.na');
+  final normalized = value.toLowerCase().replaceAll('í', 'i');
+  final key = 'modalidad.$normalized';
+  final label = context.tr(key);
+  return label == key ? value.replaceAll('_', ' ') : label;
+}
+
 String? requiredField(String? value, String message) {
   if (value == null || value.trim().isEmpty) return message;
   return null;

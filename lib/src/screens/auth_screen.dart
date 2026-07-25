@@ -166,43 +166,30 @@ class _AuthScreenState extends State<AuthScreen> {
               );
             }
 
-            final panelWidth = (constraints.maxWidth - 32).clamp(0.0, 1360.0);
-            final panelHeight = (constraints.maxHeight - 32).clamp(0.0, 800.0);
-            return Center(
-              child: SizedBox(
-                width: panelWidth,
-                height: panelHeight,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: BrandGradientPanel(
-                          padding: const EdgeInsets.fromLTRB(42, 42, 42, 34),
-                          borderRadius: BorderRadius.zero,
-                          child: const _ApplicantLoginHero(),
-                        ),
-                      ),
-                      Expanded(
-                        child: ColoredBox(
-                          color: c.background,
-                          child: Center(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(32),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 380,
-                                ),
-                                child: form,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+            return Row(
+              children: [
+                Expanded(
+                  child: BrandGradientPanel(
+                    padding: const EdgeInsets.fromLTRB(52, 48, 52, 40),
+                    borderRadius: BorderRadius.zero,
+                    child: const _ApplicantLoginHero(),
                   ),
                 ),
-              ),
+                Expanded(
+                  child: ColoredBox(
+                    color: c.background,
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(40),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 390),
+                          child: form,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -246,6 +233,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 58,
         leading: IconButton(
           tooltip: context.t('common.back'),
           icon: const Icon(Icons.arrow_back),
@@ -450,16 +438,7 @@ class _ApplicantLoginHero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 76,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: const BrandMark(size: 28),
-        ),
+        const BrandMark(size: 38),
         SizedBox(height: compact ? 24 : 64),
         Text(
           context.t('auth.hero.title'),

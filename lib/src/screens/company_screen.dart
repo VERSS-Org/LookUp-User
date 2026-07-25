@@ -18,6 +18,7 @@ class CompanyScreen extends StatefulWidget {
 
 class _CompanyScreenState extends State<CompanyScreen> {
   late Future<(Map<String, dynamic>?, List<Map<String, dynamic>>)> _future;
+  bool _updatingFollow = false;
 
   @override
   void initState() {
@@ -39,6 +40,24 @@ class _CompanyScreenState extends State<CompanyScreen> {
 
   void _retry() {
     setState(() => _future = _load());
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_updatingFollow) return;
+    setState(() => _updatingFollow = true);
+    try {
+      await context.read<LookUpDataService>().toggleFollowCompany(
+        widget.empresaId,
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingFollow = false);
+    }
   }
 
   @override
@@ -85,6 +104,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
           final description = details['descripcion']?.toString().trim() ?? '';
           final city = company['ciudad']?.toString().trim() ?? '';
           final phone = company['telefono']?.toString().trim() ?? '';
+          final followed = data.isCompanyFollowed(widget.empresaId);
 
           return ViewportScrollPage(
             key: const Key('company-profile-scroll'),
@@ -96,11 +116,36 @@ class _CompanyScreenState extends State<CompanyScreen> {
                 ProfileBanner(
                   avatar: CompanyAvatar(
                     fotoUrl: company['foto_url']?.toString(),
+                    name: name,
                     size: 76,
                   ),
                   title: name,
                   subtitle: city,
                   caption: phone,
+                  bannerUrl:
+                      company['banner_url']?.toString() ??
+                      details['banner_url']?.toString(),
+                  action: OutlinedButton.icon(
+                    key: const Key('company-follow-button'),
+                    onPressed: _updatingFollow ? null : _toggleFollow,
+                    icon: _updatingFollow
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            followed
+                                ? Icons.notifications_active_outlined
+                                : Icons.add,
+                            size: 16,
+                          ),
+                    label: Text(
+                      context.t(
+                        followed ? 'company.following' : 'company.follow',
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 SectionHeader(title: context.t('company.about')),

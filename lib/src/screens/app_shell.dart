@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -35,12 +33,12 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  // 0..3: secciones principales · 4: mensajes · 6: perfil · 7: búsqueda móvil
+  // 0..3: secciones principales · 4: mensajes · 5: notificaciones
+  // 6: perfil · 7: búsqueda móvil
   int _index = 0;
   int _primaryIndex = 0;
   String? _requestedConversationId;
   final SearchController _searchController = SearchController();
-  final GlobalKey _notificationAnchorKey = GlobalKey();
   GlobalKey<NavigatorState> _contentNavigatorKey = GlobalKey<NavigatorState>();
 
   @override
@@ -157,45 +155,23 @@ class _AppShellState extends State<AppShell> {
   void _openNotifications() {
     final isWide = MediaQuery.sizeOf(context).width >= 960;
     if (isWide) {
-      final size = MediaQuery.sizeOf(context);
-      final anchorContext = _notificationAnchorKey.currentContext;
-      final renderBox = anchorContext?.findRenderObject() as RenderBox?;
-      final anchorOffset =
-          renderBox?.localToGlobal(Offset.zero) ?? const Offset(0, 52);
-      final anchorSize = renderBox?.size ?? const Size(42, 42);
-      final panelWidth = size.width < 420 ? size.width - 24 : 380.0;
-      final right = (size.width - anchorOffset.dx - anchorSize.width)
-          .clamp(12.0, size.width - panelWidth - 12)
-          .toDouble();
-      final preferredTop = anchorOffset.dy + anchorSize.height + 4;
-      final availableBelow = size.height - preferredTop - 12;
-      final top = availableBelow >= 240 ? preferredTop : 12.0;
-      final panelHeight = math.max(
-        0.0,
-        math.min(500.0, size.height - top - 12),
-      );
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.transparent,
-        builder: (dialogContext) => Dialog(
-          alignment: Alignment.topRight,
-          insetPadding: EdgeInsets.fromLTRB(12, top, right, 12),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: SizedBox(
-            key: const Key('notifications-popover'),
-            width: panelWidth,
-            height: panelHeight,
-            child: const NotificationsScreen(popup: true),
-          ),
-        ),
-      );
+      _select(5);
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const NotificationsScreen()),
       );
     }
+  }
+
+  void _openJobFromNotification(String puestoId) {
+    if (puestoId.trim().isEmpty) return;
+    _openSearchDestination(OfferDetailPage(job: {'puesto_id': puestoId}));
+  }
+
+  void _openCompanyFromNotification(String empresaId) {
+    if (empresaId.trim().isEmpty) return;
+    _openSearchDestination(CompanyScreen(empresaId: empresaId));
   }
 
   void _focusGlobalSearch() {
@@ -223,8 +199,6 @@ class _AppShellState extends State<AppShell> {
     switch (index) {
       case 0:
         return HomeScreen(
-          onOpenMessages: _openMessages,
-          onOpenNotifications: _openNotifications,
           onOpenProcesses: () => _select(2),
           onOpenOffers: () => _select(1),
         );
@@ -239,6 +213,14 @@ class _AppShellState extends State<AppShell> {
           key: ValueKey(_requestedConversationId),
           embedded: true,
           initialPostulacionId: _requestedConversationId,
+        );
+      case 5:
+        return NotificationsScreen(
+          embedded: true,
+          onOpenJob: _openJobFromNotification,
+          onOpenProcesses: () => _select(2),
+          onOpenConversation: _openConversation,
+          onOpenCompany: _openCompanyFromNotification,
         );
       case 7:
         return OffersScreen(
@@ -296,7 +278,6 @@ class _AppShellState extends State<AppShell> {
                 onSelect: _select,
                 onOpenMessages: _openMessages,
                 onOpenNotifications: _openNotifications,
-                notificationAnchorKey: _notificationAnchorKey,
                 onOpenProfile: _openProfile,
                 searchController: _searchController,
                 onSearchChanged: _setSearchQuery,
@@ -479,7 +460,6 @@ class _TopNavBar extends StatelessWidget {
     required this.onSelect,
     required this.onOpenMessages,
     required this.onOpenNotifications,
-    required this.notificationAnchorKey,
     required this.onOpenProfile,
     required this.searchController,
     required this.onSearchChanged,
@@ -497,7 +477,6 @@ class _TopNavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final VoidCallback onOpenMessages;
   final VoidCallback onOpenNotifications;
-  final GlobalKey notificationAnchorKey;
   final VoidCallback onOpenProfile;
   final SearchController searchController;
   final ValueChanged<String> onSearchChanged;
@@ -575,7 +554,6 @@ class _TopNavBar extends StatelessWidget {
             onPressed: onOpenMessages,
           ),
           BadgedIconButton(
-            key: notificationAnchorKey,
             icon: Icons.notifications_outlined,
             count: notifications,
             tooltip: context.t('notif.title'),
@@ -713,6 +691,7 @@ class _GlobalSearchState extends State<_GlobalSearch> {
           (job) => ListTile(
             leading: CompanyAvatar(
               fotoUrl: job['empresa_foto']?.toString(),
+              name: job['empresa_nombre']?.toString(),
               size: 38,
             ),
             title: Text(
@@ -742,6 +721,9 @@ class _GlobalSearchState extends State<_GlobalSearch> {
               (company) => ListTile(
                 leading: CompanyAvatar(
                   fotoUrl: company['foto_url']?.toString(),
+                  name:
+                      company['nombre']?.toString() ??
+                      company['nombre_completo']?.toString(),
                   size: 38,
                 ),
                 title: Text(

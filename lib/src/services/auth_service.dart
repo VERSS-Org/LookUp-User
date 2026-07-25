@@ -219,6 +219,18 @@ class AuthService with ChangeNotifier {
     });
   }
 
+  Future<bool> uploadProfileBanner(XFile file) async {
+    if (_cuentaId == null) return false;
+
+    return _withLoading(() async {
+      _profile = asMap(
+        await _api.uploadFile('iam/cuenta/$_cuentaId/banner', 'banner', file),
+      );
+      notifyListeners();
+      return true;
+    });
+  }
+
   Future<void> logout() => _clearSession();
 
   Future<void> _clearSession() async {

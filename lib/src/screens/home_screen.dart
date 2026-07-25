@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lookup_user/src/screens/company_screen.dart';
 import 'package:lookup_user/src/screens/offers_screen.dart';
 import 'package:lookup_user/src/services/auth_service.dart';
 import 'package:lookup_user/src/services/data_service.dart';
@@ -12,14 +13,10 @@ import 'package:lookup_user/src/widgets/common.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    required this.onOpenMessages,
-    required this.onOpenNotifications,
     required this.onOpenProcesses,
     required this.onOpenOffers,
   });
 
-  final VoidCallback onOpenMessages;
-  final VoidCallback onOpenNotifications;
   final VoidCallback onOpenProcesses;
   final VoidCallback onOpenOffers;
 
@@ -47,7 +44,10 @@ class HomeScreen extends StatelessWidget {
         })
         .take(2)
         .toList();
-    final suggestedJobs = data.jobs
+    final recommendationSource = data.recommendedJobs.isNotEmpty
+        ? data.recommendedJobs
+        : data.jobs;
+    final suggestedJobs = recommendationSource
         .where(
           (job) =>
               (job['estado']?.toString() ?? 'abierto') == 'abierto' &&
@@ -78,72 +78,23 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             if (data.error != null) ErrorBanner(message: data.error!),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 760;
-                final processes = _HomeSection(
-                  title: context.t('home.active_processes'),
-                  actionLabel: context.t('common.view_all'),
-                  onAction: onOpenProcesses,
-                  child: activeApplications.isEmpty
-                      ? _CompactEmpty(
-                          icon: Icons.route_outlined,
-                          message: context.t('home.processes.empty'),
-                        )
-                      : Column(
-                          children: activeApplications
-                              .map(
-                                (application) => _CompactProcessRow(
-                                  application: application,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                );
-                final notifications = _HomeSection(
-                  title: context.t('home.notifications'),
-                  actionLabel: context.t('common.view_all'),
-                  onAction: onOpenNotifications,
-                  child: data.events.isEmpty
-                      ? _CompactEmpty(
-                          icon: Icons.notifications_none,
-                          message: context.t('notif.empty.title'),
-                        )
-                      : Column(
-                          children: data.events
-                              .take(3)
-                              .map(
-                                (event) => _NotificationRow(
-                                  event: event,
-                                  onTap: onOpenNotifications,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                );
-                if (!wide) {
-                  return Column(
-                    children: [
-                      processes,
-                      const SizedBox(height: 24),
-                      notifications,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 11, child: processes),
-                    Container(
-                      width: 1,
-                      height: 238,
-                      margin: const EdgeInsets.symmetric(horizontal: 22),
-                      color: c.border,
+            _HomeSection(
+              title: context.t('home.active_processes'),
+              actionLabel: context.t('common.view_all'),
+              onAction: onOpenProcesses,
+              child: activeApplications.isEmpty
+                  ? _CompactEmpty(
+                      icon: Icons.route_outlined,
+                      message: context.t('home.processes.empty'),
+                    )
+                  : Column(
+                      children: activeApplications
+                          .map(
+                            (application) =>
+                                _CompactProcessRow(application: application),
+                          )
+                          .toList(),
                     ),
-                    Expanded(flex: 9, child: notifications),
-                  ],
-                );
-              },
             ),
             const SizedBox(height: 28),
             _HomeSection(
@@ -173,6 +124,38 @@ class HomeScreen extends StatelessWidget {
                           .toList(),
                     ),
             ),
+            if (data.recommendedCompanies.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              _HomeSection(
+                title: context.t('home.companies_for_you'),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: data.recommendedCompanies
+                      .take(4)
+                      .map(
+                        (company) => _RecommendedCompanyCard(
+                          company: company,
+                          onTap: () {
+                            final companyId =
+                                company['cuenta_id']?.toString() ??
+                                company['empresa_id']?.toString() ??
+                                '';
+                            if (companyId.isEmpty) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    CompanyScreen(empresaId: companyId),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -367,19 +350,30 @@ class _MiniStageLine extends StatelessWidget {
           return Expanded(
             child: Container(
               height: 2,
-              color: step < current ? c.brand : c.border,
+              color: step < current
+                  ? (step >= 1 ? c.warning : c.brand)
+                  : c.border,
             ),
           );
         }
         final step = index ~/ 2;
         final reached = step <= current;
+        final stepColor = switch (step) {
+          1 || 2 => c.warning,
+          3 when state == 'aceptado' => c.success,
+          3 when state == 'rechazado' => c.danger,
+          _ => c.brand,
+        };
         return Container(
           width: 10,
           height: 10,
           decoration: BoxDecoration(
-            color: reached ? c.brand : c.background,
+            color: reached ? stepColor : c.background,
             shape: BoxShape.circle,
-            border: Border.all(color: reached ? c.brand : c.border, width: 1.5),
+            border: Border.all(
+              color: reached ? stepColor : c.border,
+              width: 1.5,
+            ),
           ),
           child: reached
               ? const Icon(Icons.check, size: 7, color: Colors.white)
@@ -390,43 +384,52 @@ class _MiniStageLine extends StatelessWidget {
   }
 }
 
-class _NotificationRow extends StatelessWidget {
-  const _NotificationRow({required this.event, required this.onTap});
+class _RecommendedCompanyCard extends StatelessWidget {
+  const _RecommendedCompanyCard({required this.company, required this.onTap});
 
-  final Map<String, dynamic> event;
+  final Map<String, dynamic> company;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final eventType = event['tipo_evento']?.toString() ?? '';
-    final icon = switch (eventType) {
-      'postulacion_creada' => Icons.send_outlined,
-      'estado_actualizado' => Icons.assignment_turned_in_outlined,
-      _ => Icons.notifications_none,
-    };
+    final name =
+        company['nombre']?.toString() ??
+        company['nombre_completo']?.toString() ??
+        context.t('common.company');
+    final reasons = company['razones'] is List
+        ? List<dynamic>.from(company['razones'] as List)
+        : const <dynamic>[];
+    final detail = reasons.isNotEmpty
+        ? reasons.first.toString()
+        : company['ciudad']?.toString() ?? '';
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
+        width: 220,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: c.border)),
+          color: c.surface,
+          border: Border.all(color: c.border),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 17, color: c.brand),
-            const SizedBox(width: 9),
+            CompanyAvatar(
+              fotoUrl:
+                  company['foto_url']?.toString() ??
+                  company['empresa_foto']?.toString(),
+              name: name,
+              size: 36,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    prettyEventText(
-                      context,
-                      event['titulo']?.toString() ?? '—',
-                    ),
+                    name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -435,21 +438,17 @@ class _NotificationRow extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    eventDescriptionT(context, event),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: c.inkMuted, fontSize: 12),
-                  ),
+                  if (detail.isNotEmpty)
+                    Text(
+                      detail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: c.inkMuted, fontSize: 11.5),
+                    ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              relativeDateT(context, event['fecha']?.toString()),
-              style: TextStyle(color: c.inkFaint, fontSize: 12),
-            ),
+            Icon(Icons.chevron_right, size: 17, color: c.inkFaint),
           ],
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:lookup_user/src/theme.dart';
 
@@ -435,23 +436,44 @@ class ProfileAvatar extends StatelessWidget {
 /// Logo de empresa: la imagen tal cual (círculo); si la empresa no tiene
 /// logo, un símbolo genérico neutro.
 class CompanyAvatar extends StatelessWidget {
-  const CompanyAvatar({super.key, required this.fotoUrl, this.size = 44});
+  const CompanyAvatar({
+    super.key,
+    required this.fotoUrl,
+    this.size = 44,
+    this.name,
+  });
 
   final String? fotoUrl;
   final double size;
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final url = fotoUrl?.trim();
+    // SVG y raster comparten el mismo encuadre; ante cualquier fallo se
+    // conserva una identidad estable mediante iniciales.
+    final isSvg = url?.toLowerCase().split('?').first.endsWith('.svg') ?? false;
     if (url != null && url.isNotEmpty) {
       return ClipOval(
-        child: Image.network(
-          url,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _generic(c),
+        child: ColoredBox(
+          color: context.isDark && isSvg ? const Color(0xFFF4F5F7) : c.surface,
+          child: isSvg
+              ? SvgPicture.network(
+                  url,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (_) => _generic(c),
+                  errorBuilder: (_, _, _) => _generic(c),
+                )
+              : Image.network(
+                  url,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => _generic(c),
+                ),
         ),
       );
     }
@@ -459,6 +481,11 @@ class CompanyAvatar extends StatelessWidget {
   }
 
   Widget _generic(LookUpColors c) {
+    if ((name?.trim() ?? '').isNotEmpty) {
+      return ClipOval(
+        child: InitialsAvatar(name: name!, size: size, color: c.brand),
+      );
+    }
     return Container(
       width: size,
       height: size,
@@ -517,6 +544,7 @@ class ProfileBanner extends StatelessWidget {
     this.subtitle = '',
     this.caption = '',
     this.action,
+    this.bannerUrl,
   });
 
   final Widget avatar;
@@ -524,6 +552,7 @@ class ProfileBanner extends StatelessWidget {
   final String subtitle;
   final String caption;
   final Widget? action;
+  final String? bannerUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -565,13 +594,31 @@ class ProfileBanner extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                BrandGradientPanel(
-                  height: compact ? 92 : 110,
-                  padding: EdgeInsets.zero,
-                  borderRadius: BorderRadius.circular(12),
-                  showBottomLeftRing: false,
-                  child: const SizedBox.shrink(),
-                ),
+                if ((bannerUrl?.trim() ?? '').isEmpty)
+                  BrandGradientPanel(
+                    height: compact ? 92 : 110,
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(12),
+                    showBottomLeftRing: false,
+                    child: const SizedBox.shrink(),
+                  )
+                else
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      bannerUrl!,
+                      width: double.infinity,
+                      height: compact ? 92 : 110,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => BrandGradientPanel(
+                        height: compact ? 92 : 110,
+                        padding: EdgeInsets.zero,
+                        borderRadius: BorderRadius.circular(12),
+                        showBottomLeftRing: false,
+                        child: const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: compact ? 16 : 20,
                   bottom: -40,
