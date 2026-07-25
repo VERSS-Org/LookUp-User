@@ -18,6 +18,10 @@ class LookUpDataService with ChangeNotifier {
   List<Map<String, dynamic>> _achievements = [];
   String? _achievementsError;
   List<Map<String, dynamic>> _events = [];
+  List<Map<String, dynamic>> _recommendedJobs = [];
+  List<Map<String, dynamic>> _recommendedCompanies = [];
+  List<Map<String, dynamic>> _savedJobs = [];
+  List<Map<String, dynamic>> _followedCompanies = [];
   String _searchQuery = '';
   final Map<String, List<Map<String, dynamic>>> _companySearchCache = {};
   bool _isLoading = false;
@@ -33,6 +37,10 @@ class LookUpDataService with ChangeNotifier {
   List<Map<String, dynamic>> get achievements => _achievements;
   String? get achievementsError => _achievementsError;
   List<Map<String, dynamic>> get events => _events;
+  List<Map<String, dynamic>> get recommendedJobs => _recommendedJobs;
+  List<Map<String, dynamic>> get recommendedCompanies => _recommendedCompanies;
+  List<Map<String, dynamic>> get savedJobs => _savedJobs;
+  List<Map<String, dynamic>> get followedCompanies => _followedCompanies;
   String get searchQuery => _searchQuery;
   int get unseenNotifications => _unseenNotifications;
   bool get isLoading => _isLoading;
@@ -59,6 +67,10 @@ class LookUpDataService with ChangeNotifier {
     _achievements = [];
     _achievementsError = null;
     _events = [];
+    _recommendedJobs = [];
+    _recommendedCompanies = [];
+    _savedJobs = [];
+    _followedCompanies = [];
     _searchQuery = '';
     _companySearchCache.clear();
     _unseenNotifications = 0;
@@ -90,6 +102,13 @@ class LookUpDataService with ChangeNotifier {
       capture(fetchInbox(notify: false)),
       capture(fetchEvents(notify: false)),
     ]);
+    // Estas funciones enriquecen la experiencia pero no deben impedir el uso
+    // principal si un despliegue antiguo todavía no expone alguna ruta.
+    await Future.wait([
+      _captureOptional(() => fetchSavedJobs(notify: false)),
+      _captureOptional(() => fetchFollowedCompanies(notify: false)),
+      _captureOptional(() => fetchRecommendations(notify: false)),
+    ]);
 
     if (generation != _generation) return;
     if (errors.isNotEmpty) {
@@ -97,6 +116,14 @@ class LookUpDataService with ChangeNotifier {
     }
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _captureOptional(Future<void> Function() request) async {
+    try {
+      await request();
+    } catch (error) {
+      debugPrint('Optional LookUp data unavailable: $error');
+    }
   }
 
   Future<void> fetchJobs({bool notify = true}) async {
@@ -279,13 +306,111 @@ class LookUpDataService with ChangeNotifier {
     });
   }
 
+  // ---- Guardados, empresas seguidas y recomendaciones ---------------------
+
+  bool isJobSaved(String puestoId) => _savedJobs.any((item) {
+    final puesto = asMap(item['puesto']);
+    return item['puesto_id']?.toString() == puestoId ||
+        puesto['puesto_id']?.toString() == puestoId;
+  });
+
+  bool isCompanyFollowed(String empresaId) => _followedCompanies.any((item) {
+    final empresa = asMap(item['empresa']);
+    return item['empresa_id']?.toString() == empresaId ||
+        item['cuenta_id']?.toString() == empresaId ||
+        empresa['cuenta_id']?.toString() == empresaId;
+  });
+
+  Future<void> fetchSavedJobs({bool notify = true}) async {
+    final generation = _generation;
+    final response = await _api.get('puesto/guardados');
+    if (generation != _generation) return;
+    _savedJobs = asMapList(response);
+    if (notify) notifyListeners();
+  }
+
+  Future<void> toggleSavedJob(String puestoId) async {
+    final generation = _generation;
+    if (isJobSaved(puestoId)) {
+      await _api.delete('puesto/guardados/$puestoId');
+    } else {
+      await _api.post('puesto/guardados/$puestoId', const {});
+    }
+    if (generation != _generation) return;
+    await fetchSavedJobs(notify: false);
+    try {
+      // Guardar una vacante también ajusta las señales de afinidad del
+      // recomendador, por lo que refrescamos sus resultados de inmediato.
+      await fetchRecommendations(notify: false);
+    } catch (error) {
+      // La acción principal ya fue confirmada por la API; un fallo opcional
+      // del recomendador no debe revertirla ni dejar el botón bloqueado.
+      debugPrint('Could not refresh recommendations after save: $error');
+    }
+    if (generation == _generation) notifyListeners();
+  }
+
+  Future<void> fetchFollowedCompanies({bool notify = true}) async {
+    final generation = _generation;
+    final response = await _api.get('iam/empresas/seguidas');
+    if (generation != _generation) return;
+    _followedCompanies = asMapList(response);
+    if (notify) notifyListeners();
+  }
+
+  Future<void> toggleFollowCompany(String empresaId) async {
+    final generation = _generation;
+    final wasFollowed = isCompanyFollowed(empresaId);
+    if (wasFollowed) {
+      await _api.delete('iam/empresas/seguidas/$empresaId');
+    } else {
+      await _api.post('iam/empresas/seguidas/$empresaId', const {});
+    }
+    if (generation != _generation) return;
+    await fetchFollowedCompanies(notify: false);
+    try {
+      await fetchRecommendations(notify: false);
+    } catch (error) {
+      // Seguir/dejar de seguir ya se confirmó. Si el refresco opcional falla,
+      // evita al menos recomendar de nuevo una empresa recién seguida.
+      if (!wasFollowed) {
+        _recommendedCompanies.removeWhere(
+          (company) =>
+              (company['cuenta_id'] ?? company['empresa_id'])?.toString() ==
+              empresaId,
+        );
+      }
+      debugPrint('Could not refresh recommendations after follow: $error');
+    }
+    if (generation == _generation) notifyListeners();
+  }
+
+  Future<void> fetchRecommendations({bool notify = true}) async {
+    final generation = _generation;
+    final responses = await Future.wait([
+      _api.get('puesto/recomendados?limit=20'),
+      _api.get('iam/empresas/recomendadas?limit=12'),
+    ]);
+    if (generation != _generation) return;
+    _recommendedJobs = asMapList(responses[0]);
+    _recommendedCompanies = asMapList(responses[1]);
+    if (notify) notifyListeners();
+  }
+
   // ---- Notificaciones (novedades de los ultimos 7 dias) --------------------
 
   static const _lastSeenNotifsKey = 'lastSeenNotifs';
 
   Future<void> fetchEvents({bool notify = true}) async {
     final generation = _generation;
-    final events = asMapList(await _api.get('postulacion/eventos'));
+    List<Map<String, dynamic>> events;
+    try {
+      events = asMapList(await _api.get('iam/notificaciones'));
+    } on ApiException catch (error) {
+      // Compatibilidad temporal con despliegues anteriores del backend.
+      if (error.statusCode != 404) rethrow;
+      events = asMapList(await _api.get('postulacion/eventos'));
+    }
     if (generation != _generation) return;
     final unseen = await _readUnseenNotifications(events, generation);
     if (generation != _generation) return;
@@ -298,6 +423,12 @@ class LookUpDataService with ChangeNotifier {
     List<Map<String, dynamic>> events,
     int generation,
   ) async {
+    if (events.any(
+      (event) =>
+          event.containsKey('leida') || event.containsKey('fecha_creacion'),
+    )) {
+      return events.where((event) => event['leida'] != true).length;
+    }
     final prefs = await SharedPreferences.getInstance();
     if (generation != _generation) return 0;
     final lastSeen = prefs.getString(_lastSeenNotifsKey) ?? '';
@@ -310,9 +441,14 @@ class LookUpDataService with ChangeNotifier {
   Future<void> markNotificationsSeen() async {
     final generation = _generation;
     if (_events.isEmpty && _unseenNotifications == 0) return;
+    try {
+      await _api.patch('iam/notificaciones/leer-todas', const {});
+    } on ApiException catch (error) {
+      if (error.statusCode != 404) rethrow;
+    }
     final prefs = await SharedPreferences.getInstance();
     final latest = _events
-        .map((e) => e['fecha']?.toString() ?? '')
+        .map((e) => (e['fecha'] ?? e['fecha_creacion'])?.toString() ?? '')
         .fold('', (a, b) => a.compareTo(b) >= 0 ? a : b);
     if (generation != _generation) return;
     if (latest.isNotEmpty) {
@@ -323,6 +459,44 @@ class LookUpDataService with ChangeNotifier {
       _unseenNotifications = 0;
       notifyListeners();
     }
+  }
+
+  /// Marca una notificación concreta sin consumir el resto del buzón.
+  ///
+  /// Los eventos del endpoint legado no incluyen un identificador persistente;
+  /// en ese caso se conserva la compatibilidad marcando el conjunto actual.
+  Future<void> markNotificationSeen(Map<String, dynamic> event) async {
+    if (event['leida'] == true) return;
+    final notificationId = event['notificacion_id']?.toString().trim() ?? '';
+    if (notificationId.isEmpty) {
+      await markNotificationsSeen();
+      return;
+    }
+
+    final generation = _generation;
+    try {
+      await _api.patch(
+        'iam/notificaciones/${Uri.encodeComponent(notificationId)}/leida',
+        const {},
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode != 404) rethrow;
+      await markNotificationsSeen();
+      return;
+    }
+    if (generation != _generation) return;
+
+    _events = [
+      for (final item in _events)
+        if (item['notificacion_id']?.toString() == notificationId)
+          {...item, 'leida': true}
+        else
+          item,
+    ];
+    _unseenNotifications = _events
+        .where((item) => item['leida'] != true)
+        .length;
+    notifyListeners();
   }
 
   // ---- Buscador de empresas -------------------------------------------------
@@ -348,6 +522,13 @@ class LookUpDataService with ChangeNotifier {
     }
     _companySearchCache[normalized] = results;
     return results;
+  }
+
+  Future<List<Map<String, dynamic>>> searchOrganizations(String query) async {
+    final normalized = query.trim();
+    if (normalized.length < 2) return const [];
+    final q = Uri.encodeQueryComponent(normalized);
+    return asMapList(await _api.get('iam/organizaciones?q=$q&limit=10'));
   }
 
   // ---- Retiro de postulacion ------------------------------------------------

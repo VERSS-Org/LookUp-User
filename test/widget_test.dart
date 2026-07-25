@@ -40,6 +40,7 @@ class _TestDataService extends LookUpDataService {
   final bool failCompany;
   final bool failJobDetail;
   int markNotificationsSeenCalls = 0;
+  final List<String> markedNotificationIds = [];
 
   @override
   List<Map<String, dynamic>> get jobs => testJobs;
@@ -101,6 +102,11 @@ class _TestDataService extends LookUpDataService {
   @override
   Future<void> markNotificationsSeen() async {
     markNotificationsSeenCalls++;
+  }
+
+  @override
+  Future<void> markNotificationSeen(Map<String, dynamic> event) async {
+    markedNotificationIds.add(event['notificacion_id']?.toString() ?? '');
   }
 }
 
@@ -418,22 +424,15 @@ void main() {
     expect(messageX, lessThan(notificationX));
     expect(notificationX, lessThan(profileX));
 
-    final notificationButton = find.byTooltip('Notificaciones');
-    final notificationRect = tester.getRect(notificationButton);
-    await tester.tap(notificationButton);
-    await tester.pump();
-    final popover = find.byKey(const Key('notifications-popover'));
-    expect(popover, findsOneWidget);
-    expect(tester.getSize(popover).width, lessThan(500));
-    expect(tester.getSize(popover).height, lessThan(600));
-    final popoverRect = tester.getRect(popover);
-    expect(popoverRect.top, greaterThanOrEqualTo(notificationRect.bottom));
-    expect((popoverRect.right - notificationRect.right).abs(), lessThan(24));
+    await tester.tap(find.byTooltip('Notificaciones'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notifications-popover')), findsNothing);
+    expect(find.text('Notificaciones'), findsOneWidget);
     expect(data.markNotificationsSeenCalls, 0);
     await tester.tap(find.byKey(const Key('notifications-mark-read')));
     await tester.pump();
     expect(data.markNotificationsSeenCalls, 1);
-    expect(find.text('Hola, Postulante'), findsOneWidget);
+    expect(find.text('Hola, Postulante'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -455,7 +454,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('notification popup adapts to a short web viewport', (
+  testWidgets('notification page adapts to a short web viewport', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -464,11 +463,11 @@ void main() {
     await tester.pumpWidget(_testShell());
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Notificaciones'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    final popover = find.byKey(const Key('notifications-popover'));
-    expect(popover, findsOneWidget);
-    expect(tester.getSize(popover).height, lessThanOrEqualTo(236));
+    expect(find.byKey(const Key('notifications-popover')), findsNothing);
+    expect(find.text('Notificaciones'), findsOneWidget);
+    expect(find.byType(Scrollable), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -718,7 +717,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _testFeature(child: const NotificationsScreen(popup: true), data: data),
+      _testFeature(child: const NotificationsScreen(), data: data),
     );
     await tester.pumpAndSettle();
 
@@ -727,6 +726,110 @@ void main() {
     expect(find.textContaining('events failure'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'notification rows mark read and open safe metadata destinations',
+    (tester) async {
+      _setViewport(tester, const Size(720, 800));
+      final data = _TestDataService(
+        testEvents: const [
+          {
+            'notificacion_id': 'notif-job',
+            'tipo': 'nueva_vacante_empresa_seguida',
+            'titulo': 'Nueva vacante disponible',
+            'puesto_id': 'job-7',
+            'fecha_creacion': '2026-07-24T10:00:00',
+          },
+          {
+            'notificacion_id': 'notif-process',
+            'tipo': 'estado_postulacion',
+            'titulo': 'Tu proceso cambió',
+            'metadata': {'postulacion_id': 'application-4'},
+            'fecha_creacion': '2026-07-24T09:00:00',
+          },
+          {
+            'notificacion_id': 'notif-chat',
+            'tipo': 'nuevo_mensaje',
+            'titulo': 'Tienes un mensaje',
+            'metadata': {'postulacion_id': 'application-8'},
+            'fecha_creacion': '2026-07-24T08:00:00',
+          },
+          {
+            'notificacion_id': 'notif-company',
+            'tipo': 'empresa_recomendada',
+            'titulo': 'Empresa para ti',
+            'metadata': {'empresa_id': 'company-2'},
+            'fecha_creacion': '2026-07-24T07:00:00',
+          },
+          {
+            'notificacion_id': 'notif-closed-job',
+            'tipo': 'vacante_guardada_cerrada',
+            'titulo': 'Una vacante guardada se cerró',
+            'puesto_id': 'closed-job',
+            'empresa_id': 'company-closed-job',
+            'fecha_creacion': '2026-07-24T06:30:00',
+          },
+          {
+            'notificacion_id': 'notif-incomplete',
+            'tipo': 'desconocida',
+            'titulo': 'Aviso general',
+            'metadata': {'puesto_id': ''},
+            'fecha_creacion': '2026-07-24T06:00:00',
+          },
+        ],
+      );
+      String? openedJob;
+      String? openedConversation;
+      String? openedCompany;
+      var openedProcesses = 0;
+
+      await tester.pumpWidget(
+        _testFeature(
+          data: data,
+          child: NotificationsScreen(
+            onOpenJob: (id) => openedJob = id,
+            onOpenProcesses: () => openedProcesses++,
+            onOpenConversation: (id) => openedConversation = id,
+            onOpenCompany: (id) => openedCompany = id,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nueva vacante disponible'));
+      await tester.pump();
+      expect(openedJob, 'job-7');
+
+      await tester.tap(find.text('Tu proceso cambió'));
+      await tester.pump();
+      expect(openedProcesses, 1);
+
+      await tester.tap(find.text('Tienes un mensaje'));
+      await tester.pump();
+      expect(openedConversation, 'application-8');
+
+      await tester.tap(find.text('Empresa para ti'));
+      await tester.pump();
+      expect(openedCompany, 'company-2');
+
+      await tester.tap(find.text('Una vacante guardada se cerró'));
+      await tester.pump();
+      expect(openedCompany, 'company-closed-job');
+      expect(openedJob, 'job-7');
+
+      await tester.tap(find.text('Aviso general'));
+      await tester.pump();
+      expect(data.markedNotificationIds, [
+        'notif-job',
+        'notif-process',
+        'notif-chat',
+        'notif-company',
+        'notif-closed-job',
+        'notif-incomplete',
+      ]);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('detail loaders expose recoverable errors', (tester) async {
     _setViewport(tester, const Size(1200, 800));

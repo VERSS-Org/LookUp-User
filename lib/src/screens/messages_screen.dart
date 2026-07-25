@@ -365,6 +365,7 @@ class _ThreadTile extends StatelessWidget {
               if ((contraparte['foto_url']?.toString().trim() ?? '').isNotEmpty)
                 CompanyAvatar(
                   fotoUrl: contraparte['foto_url']?.toString(),
+                  name: contraparte['nombre']?.toString(),
                   size: 38,
                 )
               else
@@ -663,6 +664,7 @@ class _ChatViewState extends State<ChatView> {
                   ),
                 CompanyAvatar(
                   fotoUrl: contraparte['foto_url']?.toString(),
+                  name: contraparte['nombre']?.toString(),
                   size: 32,
                 ),
                 const SizedBox(width: 10),
@@ -824,14 +826,8 @@ class _ChatDayLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Center(
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: c.border),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
         child: Text(
           label,
           style: TextStyle(

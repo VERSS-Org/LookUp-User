@@ -124,18 +124,18 @@ class LookUpColors extends ThemeExtension<LookUpColors> {
     chipAlpha: 0.11,
   );
 
-  // Modo oscuro sobre grises neutros (no azulados): descansa mejor la vista
-  // y deja que el azul de marca destaque solo donde importa.
+  // Modo oscuro sobre grises carbón realmente neutros. El azul de LookUp se
+  // reserva para acciones y estados, nunca para teñir grandes superficies.
   static const dark = LookUpColors(
-    background: Color(0xFF151923),
-    surface: Color(0xFF1D2330),
-    surfaceAlt: Color(0xFF272E3E),
-    border: Color(0xFF354055),
-    ink: Color(0xFFF5F7FC),
-    inkMuted: Color(0xFFB4BED2),
-    inkFaint: Color(0xFF7F8AA1),
-    brand: Color(0xFFAAB5FF),
-    accent: Color(0xFF59C7F4),
+    background: Color(0xFF171819),
+    surface: Color(0xFF202122),
+    surfaceAlt: Color(0xFF2A2B2D),
+    border: Color(0xFF3D3F42),
+    ink: Color(0xFFF4F5F6),
+    inkMuted: Color(0xFFB7BABE),
+    inkFaint: Color(0xFF85898F),
+    brand: Color(0xFF9CA8FF),
+    accent: Color(0xFF55C1EE),
     success: Color(0xFF63C996),
     warning: Color(0xFFE5AD61),
     danger: Color(0xFFF08383),
@@ -243,7 +243,7 @@ String canonicalEstado(String estado) =>
       icon: Icons.visibility_outlined,
     ),
     'entrevista' => (
-      color: c.accent,
+      color: c.warning,
       label: label,
       icon: Icons.event_available_outlined,
     ),

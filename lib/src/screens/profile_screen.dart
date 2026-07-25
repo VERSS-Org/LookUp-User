@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lookup_user/src/services/auth_service.dart';
+import 'package:lookup_user/src/services/data_service.dart';
 import 'package:lookup_user/src/services/locale_controller.dart';
 import 'package:lookup_user/src/services/theme_controller.dart';
 import 'package:lookup_user/src/theme.dart';
@@ -289,6 +291,10 @@ class ProfileScreen extends StatelessWidget {
                 context: context,
                 builder: (_) => const PhotoUploadDialog(),
               ),
+              onChangeBanner: () => showDialog(
+                context: context,
+                builder: (_) => const BannerUploadDialog(),
+              ),
               onEdit: () => showDialog(
                 context: context,
                 builder: (_) => EditProfileDialog(profile: profile),
@@ -380,7 +386,7 @@ class ProfileScreen extends StatelessWidget {
     String title,
     List<(String, String, bool)> fields,
   ) async {
-    final entry = await showDialog<Map<String, String>>(
+    final entry = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => _EntryDialog(title: title, fields: fields),
     );
@@ -445,12 +451,14 @@ class _ApplicantProfileHeader extends StatelessWidget {
     required this.profile,
     required this.name,
     required this.onChangePhoto,
+    required this.onChangeBanner,
     required this.onEdit,
   });
 
   final Map<String, dynamic> profile;
   final String name;
   final VoidCallback onChangePhoto;
+  final VoidCallback onChangeBanner;
   final VoidCallback onEdit;
 
   @override
@@ -472,17 +480,56 @@ class _ApplicantProfileHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
+        final details = profile['perfil'] is Map
+            ? Map<String, dynamic>.from(profile['perfil'] as Map)
+            : const <String, dynamic>{};
+        final bannerUrl =
+            profile['banner_url']?.toString().trim() ??
+            details['banner_url']?.toString().trim() ??
+            '';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                BrandGradientPanel(
-                  height: compact ? 94 : 112,
-                  showBottomLeftRing: false,
-                  padding: EdgeInsets.zero,
-                  child: const SizedBox.shrink(),
+                if (bannerUrl.isEmpty)
+                  BrandGradientPanel(
+                    height: compact ? 94 : 112,
+                    showBottomLeftRing: false,
+                    padding: EdgeInsets.zero,
+                    child: const SizedBox.shrink(),
+                  )
+                else
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(
+                      bannerUrl,
+                      height: compact ? 94 : 112,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => BrandGradientPanel(
+                        height: compact ? 94 : 112,
+                        showBottomLeftRing: false,
+                        padding: EdgeInsets.zero,
+                        child: const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: FilledButton.tonalIcon(
+                    key: const Key('profile-change-banner'),
+                    onPressed: onChangeBanner,
+                    icon: const Icon(Icons.image_outlined, size: 15),
+                    label: Text(context.t('profile.change_banner')),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 34),
+                      backgroundColor: c.surface.withValues(alpha: 0.92),
+                      foregroundColor: c.ink,
+                    ),
+                  ),
                 ),
                 Positioned(
                   left: compact ? 16 : 24,
@@ -687,15 +734,53 @@ class _SkillsWrap extends StatelessWidget {
         ),
       );
     }
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+    final visible = skills.length > 8 ? skills.take(8).toList() : skills;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var index = 0; index < skills.length; index++)
-          Chip(
-            label: Text(skills[index].toString()),
-            deleteIcon: const Icon(Icons.close, size: 13),
-            onDeleted: () => onDelete(index),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (var index = 0; index < visible.length; index++)
+              Chip(
+                label: Text(visible[index].toString()),
+                deleteIcon: const Icon(Icons.close, size: 13),
+                onDeleted: () => onDelete(index),
+              ),
+          ],
+        ),
+        if (skills.length > visible.length)
+          TextButton(
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              showDragHandle: true,
+              builder: (sheetContext) => SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (var index = 0; index < skills.length; index++)
+                        Chip(
+                          label: Text(skills[index].toString()),
+                          deleteIcon: const Icon(Icons.close, size: 13),
+                          onDeleted: () {
+                            Navigator.pop(sheetContext);
+                            onDelete(index);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            child: Text(
+              context
+                  .t('profile.view_all')
+                  .replaceAll('{section}', context.t('profile.skills')),
+            ),
           ),
       ],
     );
@@ -726,6 +811,9 @@ class _ProfileEntrySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final visibleEntries = entries.length > 3
+        ? entries.take(3).toList()
+        : entries;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -744,8 +832,8 @@ class _ProfileEntrySection extends StatelessWidget {
             ),
           )
         else
-          ...List.generate(entries.length, (index) {
-            final entry = entries[index];
+          ...List.generate(visibleEntries.length, (index) {
+            final entry = visibleEntries[index];
             final subtitle = subtitleKeys
                 .map((key) => entry[key]?.toString().trim() ?? '')
                 .where((value) => value.isNotEmpty)
@@ -761,7 +849,17 @@ class _ProfileEntrySection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 16, color: c.inkFaint),
+                  if ((entry['organizacion_logo']?.toString().trim() ?? '')
+                      .isNotEmpty)
+                    CompanyAvatar(
+                      fotoUrl: entry['organizacion_logo']?.toString(),
+                      name:
+                          entry['organizacion']?.toString() ??
+                          entry['institucion']?.toString(),
+                      size: 28,
+                    )
+                  else
+                    Icon(icon, size: 16, color: c.inkFaint),
                   const SizedBox(width: 9),
                   Expanded(
                     child: Column(
@@ -807,8 +905,77 @@ class _ProfileEntrySection extends StatelessWidget {
               ),
             );
           }),
+        if (entries.length > visibleEntries.length)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => _showAll(context),
+              child: Text(
+                context
+                    .t('profile.view_all')
+                    .replaceAll('{section}', title.toLowerCase()),
+              ),
+            ),
+          ),
         const SizedBox(height: 17),
       ],
+    );
+  }
+
+  void _showAll(BuildContext context) {
+    final c = context.colors;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                child: Text(
+                  title,
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+              ),
+              Divider(color: c.border, height: 1),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, _) =>
+                      Divider(color: c.border, height: 1),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final subtitle = subtitleKeys
+                        .map((key) => entry[key]?.toString().trim() ?? '')
+                        .where((value) => value.isNotEmpty)
+                        .join(' · ');
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CompanyAvatar(
+                        fotoUrl: entry['organizacion_logo']?.toString(),
+                        name:
+                            entry['organizacion']?.toString() ??
+                            entry['institucion']?.toString() ??
+                            entry[titleKey]?.toString(),
+                        size: 34,
+                      ),
+                      title: Text(entry[titleKey]?.toString() ?? '—'),
+                      subtitle: subtitle.isEmpty ? null : Text(subtitle),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -828,13 +995,64 @@ class _EntryDialogState extends State<_EntryDialog> {
   late final Map<String, TextEditingController> _controllers = {
     for (final field in widget.fields) field.$1: TextEditingController(),
   };
+  List<Map<String, dynamic>> _organizationResults = const [];
+  Map<String, dynamic>? _selectedOrganization;
+  Timer? _organizationDebounce;
+  int _organizationSearchStamp = 0;
+  bool _searchingOrganization = false;
 
   @override
   void dispose() {
+    _organizationDebounce?.cancel();
     for (final controller in _controllers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  bool _isOrganizationField(String key) =>
+      key == 'organizacion' || key == 'institucion';
+
+  void _searchOrganization(String value) {
+    _selectedOrganization = null;
+    _organizationDebounce?.cancel();
+    final query = value.trim();
+    if (query.length < 2) {
+      setState(() => _organizationResults = const []);
+      return;
+    }
+    final stamp = ++_organizationSearchStamp;
+    _organizationDebounce = Timer(const Duration(milliseconds: 280), () async {
+      if (mounted) setState(() => _searchingOrganization = true);
+      try {
+        final results = await context
+            .read<LookUpDataService>()
+            .searchOrganizations(query);
+        if (mounted && stamp == _organizationSearchStamp) {
+          setState(() => _organizationResults = results);
+        }
+      } catch (_) {
+        if (mounted && stamp == _organizationSearchStamp) {
+          setState(() => _organizationResults = const []);
+        }
+      } finally {
+        if (mounted && stamp == _organizationSearchStamp) {
+          setState(() => _searchingOrganization = false);
+        }
+      }
+    });
+  }
+
+  void _selectOrganization(String fieldKey, Map<String, dynamic> organization) {
+    final name =
+        organization['nombre']?.toString() ??
+        organization['nombre_completo']?.toString() ??
+        '';
+    _controllers[fieldKey]!.text = name;
+    setState(() {
+      _selectedOrganization = organization;
+      _organizationResults = const [];
+    });
   }
 
   @override
@@ -852,15 +1070,81 @@ class _EntryDialogState extends State<_EntryDialog> {
                 for (final field in widget.fields)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      controller: _controllers[field.$1],
-                      decoration: InputDecoration(labelText: field.$2),
-                      maxLines: field.$1 == 'descripcion' ? 3 : 1,
-                      validator: field.$3
-                          ? (value) => value == null || value.trim().isEmpty
-                                ? context.tr('common.required')
-                                : null
-                          : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _controllers[field.$1],
+                          decoration: InputDecoration(
+                            labelText: field.$2,
+                            suffixIcon:
+                                _isOrganizationField(field.$1) &&
+                                    _searchingOrganization
+                                ? const Padding(
+                                    padding: EdgeInsets.all(13),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          maxLines: field.$1 == 'descripcion' ? 3 : 1,
+                          onChanged: _isOrganizationField(field.$1)
+                              ? _searchOrganization
+                              : null,
+                          validator: field.$3
+                              ? (value) => value == null || value.trim().isEmpty
+                                    ? context.tr('common.required')
+                                    : null
+                              : null,
+                        ),
+                        if (_isOrganizationField(field.$1) &&
+                            _organizationResults.isNotEmpty)
+                          Container(
+                            constraints: const BoxConstraints(maxHeight: 170),
+                            decoration: BoxDecoration(
+                              color: context.colors.surface,
+                              border: Border.all(color: context.colors.border),
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(10),
+                              ),
+                            ),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _organizationResults.length,
+                              itemBuilder: (context, index) {
+                                final organization =
+                                    _organizationResults[index];
+                                final name =
+                                    organization['nombre']?.toString() ??
+                                    organization['nombre_completo']
+                                        ?.toString() ??
+                                    context.t('common.company');
+                                return ListTile(
+                                  dense: true,
+                                  leading: CompanyAvatar(
+                                    fotoUrl:
+                                        (organization['foto_url'] ??
+                                                organization['logo_url'])
+                                            ?.toString(),
+                                    name: name,
+                                    size: 30,
+                                  ),
+                                  title: Text(name),
+                                  subtitle:
+                                      (organization['ciudad']?.toString() ?? '')
+                                          .isEmpty
+                                      ? null
+                                      : Text(organization['ciudad'].toString()),
+                                  onTap: () => _selectOrganization(
+                                    field.$1,
+                                    organization,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],
@@ -876,9 +1160,20 @@ class _EntryDialogState extends State<_EntryDialog> {
         FilledButton(
           onPressed: () {
             if (!_formKey.currentState!.validate()) return;
+            final organization = _selectedOrganization;
             Navigator.pop(context, {
               for (final entry in _controllers.entries)
                 entry.key: entry.value.text.trim(),
+              if (organization != null)
+                'organizacion_id':
+                    organization['cuenta_id'] ??
+                    organization['empresa_id'] ??
+                    organization['organizacion_id'],
+              if (organization != null)
+                'organizacion_logo':
+                    organization['foto_url'] ??
+                    organization['logo_url'] ??
+                    organization['organizacion_logo'],
             });
           },
           child: Text(context.tr('common.add')),
@@ -1273,6 +1568,124 @@ class _PhotoUploadDialogState extends State<PhotoUploadDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(context.tr('photo.upload')),
+        ),
+      ],
+    );
+  }
+}
+
+class BannerUploadDialog extends StatefulWidget {
+  const BannerUploadDialog({super.key});
+
+  @override
+  State<BannerUploadDialog> createState() => _BannerUploadDialogState();
+}
+
+class _BannerUploadDialogState extends State<BannerUploadDialog> {
+  final ImagePicker _picker = ImagePicker();
+  XFile? _file;
+  Uint8List? _bytes;
+  String? _error;
+  bool _saving = false;
+
+  Future<void> _pick() async {
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2200,
+        imageQuality: 88,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      if (bytes.length > 5 * 1024 * 1024) {
+        setState(() => _error = context.tr('banner.too_big'));
+        return;
+      }
+      setState(() {
+        _file = file;
+        _bytes = bytes;
+        _error = null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    }
+  }
+
+  Future<void> _save() async {
+    if (_file == null) return;
+    setState(() => _saving = true);
+    try {
+      final success = await context.read<AuthService>().uploadProfileBanner(
+        _file!,
+      );
+      if (!mounted) return;
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _error = context.tr('banner.error'));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AlertDialog(
+      title: Text(context.t('banner.title')),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 4,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _bytes == null
+                    ? ColoredBox(
+                        color: c.surfaceAlt,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: c.inkFaint,
+                          size: 42,
+                        ),
+                      )
+                    : Image.memory(_bytes!, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _pick,
+              icon: const Icon(Icons.upload_file_outlined, size: 16),
+              label: Text(context.t('banner.pick')),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!, style: TextStyle(color: c.danger)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(context.tr('common.cancel')),
+        ),
+        FilledButton(
+          onPressed: _saving || _file == null ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(context.tr('common.save')),
         ),
       ],
     );

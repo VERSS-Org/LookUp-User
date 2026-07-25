@@ -19,14 +19,16 @@ widgets, theme y utils); `lib/main.dart` re-exporta la API principal.
 
 La app apunta a `http://localhost:8000` por defecto. Para usar otro backend:
 
-```bash
-flutter run --dart-define=LOOKUP_API_BASE_URL=http://localhost:8000
+```powershell
+flutter run -d chrome --web-port 8095 `
+  --dart-define=LOOKUP_API_BASE_URL=http://localhost:8000/api/ `
+  --dart-define=LOOKUP_RECRUITER_PORTAL_URL=http://localhost:8085
 ```
 
 En Android Emulator usa:
 
-```bash
-flutter run --dart-define=LOOKUP_API_BASE_URL=http://10.0.2.2:8000
+```powershell
+flutter run --dart-define=LOOKUP_API_BASE_URL=http://10.0.2.2:8000/api/
 ```
 
 En un teléfono físico usa la IP LAN de la PC, por ejemplo `http://192.168.1.20:8000`.
@@ -36,15 +38,19 @@ El enlace al portal de empresas mostrado en el acceso usa
 `http://localhost:8085` durante el desarrollo. Para otro entorno, define su URL
 HTTP o HTTPS al ejecutar o compilar la aplicación:
 
-```bash
-flutter run --dart-define=LOOKUP_RECRUITER_PORTAL_URL=https://empresas.ejemplo.com
+```powershell
+flutter run `
+  --dart-define=LOOKUP_API_BASE_URL=https://api.ejemplo.com/api/ `
+  --dart-define=LOOKUP_RECRUITER_PORTAL_URL=https://empresas.ejemplo.com
 ```
 
 ## Verificación
 
-```bash
+```powershell
 flutter pub get
 flutter analyze
 flutter test
-flutter build web
+flutter build web --release `
+  --dart-define=LOOKUP_API_BASE_URL=http://localhost:8000/api/ `
+  --dart-define=LOOKUP_RECRUITER_PORTAL_URL=http://localhost:8085
 ```

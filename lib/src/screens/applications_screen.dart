@@ -378,6 +378,12 @@ class _ProcessStepper extends StatelessWidget {
           ? context.t('estado.aceptado')
           : context.t('apps.stage.result'),
     ];
+    Color colorForStep(int step) => switch (step) {
+      1 || 2 => c.warning,
+      3 when state == 'aceptado' => c.success,
+      3 when state == 'rechazado' => c.danger,
+      _ => c.brand,
+    };
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -391,13 +397,13 @@ class _ProcessStepper extends StatelessWidget {
                 child: Container(
                   height: 2,
                   margin: const EdgeInsets.only(top: 7),
-                  color: step < current ? c.brand : c.border,
+                  color: step < current ? colorForStep(step + 1) : c.border,
                 ),
               );
             }
             final step = index ~/ 2;
             final reached = step <= current;
-            final terminalColor = failed && step == 3 ? c.danger : c.brand;
+            final stageColor = colorForStep(step);
             return SizedBox(
               width: compact ? 58 : 86,
               child: Column(
@@ -406,10 +412,10 @@ class _ProcessStepper extends StatelessWidget {
                     width: 16,
                     height: 16,
                     decoration: BoxDecoration(
-                      color: reached ? terminalColor : c.background,
+                      color: reached ? stageColor : c.background,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: reached ? terminalColor : c.border,
+                        color: reached ? stageColor : c.border,
                         width: 1.5,
                       ),
                     ),
@@ -427,7 +433,7 @@ class _ProcessStepper extends StatelessWidget {
                     maxLines: 2,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: reached ? terminalColor : c.inkFaint,
+                      color: reached ? stageColor : c.inkFaint,
                       fontSize: 12,
                       fontWeight: reached ? FontWeight.w700 : FontWeight.w500,
                     ),
